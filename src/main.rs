@@ -3,34 +3,54 @@
 
 #[macro_use]
 extern crate nickel; // HTTP server
+extern crate hyper;
 extern crate postgres; // postgres database management
 extern crate chrono; // SQL DATE type management
 extern crate nickel_postgres; // postgres middleware
-
+extern crate plugin;
+extern crate rustc_serialize; // JSON
 extern crate serde; // JSON
 extern crate serde_json; // JSON
 extern crate r2d2; // pool of threads
 
 use nickel::{
-  Nickel, HttpRouter, StaticFilesHandler, MediaType, QueryString
+  Nickel, HttpRouter, StaticFilesHandler, MediaType, QueryString, JsonBody
 };
+use plugin::{Plugin, Pluggable};
 use postgres::SslMode;
 use chrono::*;
 use r2d2::NopErrorHandler;
 use nickel_postgres::PostgresMiddleware;
 use nickel_postgres::PostgresRequestExtensions;
+use rustc_serialize::json::{self, Json, ToJson};
+use std::collections::BTreeMap;
+
 
 
 #[derive(Serialize, Deserialize, Debug)]
-struct PictureMetadata {
+struct PictureDBData {
     pub id: i32,
     pub author: String,
     pub description: String,
     pub gps_lat: f64,
     pub gps_long: f64,
     pub date_taken: String,
+    pub rating: Option<f32>, // reting is set to -1 when there's no rating.
+    pub likes: i32, // likes as 0 value default
+}
+
+#[derive(RustcDecodable, RustcEncodable)]
+struct PictureMetadata {
+    pub author: String,
+    pub description: String,
     pub rating: Option<f32>,
-    pub likes: i32,
+    pub gps_lat: f64,
+    pub gps_long: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PictureReturnId {
+    pub id: i32,
 }
 
 
@@ -84,11 +104,11 @@ fn main() {
                                  AND uploaded=TRUE
                                  ORDER BY {} DESC LIMIT 50", order_by)).unwrap();  // prepare the query
 
-        let mut pictures = Vec::new(); // create the PictureMetadata vector
+        let mut pictures = Vec::new(); // create the PictureDBData vector
 
         // fill the vector with query's result
         for row in stmt.query(&[&left_longitude, &right_longitude, &top_latitude, &bottom_latitude]).unwrap() {
-            pictures.push(PictureMetadata {
+            pictures.push(PictureDBData {
                 id: row.get("id"),
                 author: row.get("author"),
                 description: row.get("description"), // optional
@@ -104,46 +124,37 @@ fn main() {
     }});
 
 
-
-    server.post("/pictures/", middleware! { |req, res| {
+    // Accepts only JSON
+    server.post("/pictures/", middleware! { |req, mut res| {
         let conn = req.db_conn();
-        let query = req.query();
-
-        let prenom = query.get("pseudo").unwrap();
-    }});
-
-    /*
-    server.get("/pictures/:id", middleware! { |req, mut res| {
-        let conn = req.db_conn();
-
         res.set(MediaType::Json); // HTTP header : Content-Type: application/json
 
-        let photo_id: i32 = req.param("id").unwrap().parse().unwrap(); // get the :id param
-        println!("Photo {} request", photo_id); // debug photo request
+        // retreive the metadata in JSON
+        let pic_metadata = req.json_as::<PictureMetadata>().unwrap();
 
+        let stmt = conn.prepare("INSERT INTO pictures (author, description, gps_lat, gps_long, date_taken, rating, uploaded)
+                                VALUES($1, $2, $3, $4, NOW(), -1, FALSE)
+                                RETURNING id").unwrap();
 
-        let stmt = conn.prepare("SELECT * FROM pictures WHERE id=$1 AND uploaded=TRUE").unwrap(); // prepare the query
-        let query = stmt.query(&[&photo_id]).unwrap(); // execute the query with photo_id
-        let row = query.iter().next().unwrap(); // get the query's result
+        let query = stmt.query(&[&pic_metadata.author, &pic_metadata.description, &pic_metadata.gps_lat, &pic_metadata.gps_long]);
+        let rows = query.iter()
+                        .next()
+                        .unwrap();
 
-        let date: chrono::NaiveDate = row.get("date_taken");
-        let date = format!("{}/{}/{}", date.day(), date.month(), date.year());
+        let first_and_only_row = rows.get(0); // getting the first and only one row
 
-        // fill PictureMetadata with data
-        let data = PictureMetadata {
-            id: row.get("id"),
-            author: row.get("author"),
-            description: row.get("description"), // optional
-            gps_lat: row.get("gps_lat"),
-            gps_long: row.get("gps_long"),
-            date_taken: date,
-            rating: row.get("rating"),
-            likes: row.get("likes"),
+        let pic_id = PictureReturnId { // creating an ID struct to convert in JSON
+            id: first_and_only_row.get("id"),
         };
 
-        serde_json::ser::to_string(&data).unwrap() // return the json of data (PictureMetadata)
+        serde_json::ser::to_string(&pic_id).unwrap() // returning the id in json
     }});
-    */
+
+
+    
+    server.put("/pictures/:id", middleware! { |req, res| {
+            // WIP
+    }});
 
 
     server.listen("127.0.0.1:6767"); // listen

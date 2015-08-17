@@ -25,7 +25,7 @@ DerivedData
 Pods
 
 # Exclude personal Xcode user settings
-xcuserdata/
+/swift/app/xcuserdata/
 
 /swift/app/hypestTests/
 /swift/app/project.xcworkspace/

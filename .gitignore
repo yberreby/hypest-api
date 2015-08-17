@@ -23,3 +23,9 @@ DerivedData
 .idea/
 # Pods - for those of you who use CocoaPods
 Pods
+
+# Exclude personal Xcode user settings
+xcuserdata/
+
+hypestTests/
+project.xcworkspace/

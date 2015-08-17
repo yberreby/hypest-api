@@ -11,7 +11,6 @@ extern crate r2d2;
 extern crate r2d2_postgres;
 
 /// Standard lib crates
-use std::env;
 use std::net::*;
 use std::path::Path;
 
@@ -22,7 +21,7 @@ use iron::typemap::Key;
 use router::Router;
 use mount::Mount;
 use staticfile::Static;
-use persistent::{Write,Read};
+use persistent::{Read};
 
 // Postgres crates
 use r2d2::{Pool, PooledConnection};
@@ -46,11 +45,7 @@ fn setup_connection_pool(cn_str: &str, pool_size: u32) -> PostgresPool {
 
 // Routes
 fn environment(_: &mut Request) -> IronResult<Response> {
-    let powered_by:String = match env::var("POWERED_BY") {
-        Ok(val) => val,
-        Err(_) => "Iron".to_string()
-    };
-    let message = format!("Powered by: {}, pretty cool aye", powered_by);
+    let message = "Hello from a handler".to_owned();
     Ok(Response::with((status::Ok, message)))
 }
 

@@ -14,7 +14,6 @@ extern crate r2d2_postgres;
 use std::env;
 use std::net::*;
 use std::path::Path;
-use std::collections::BTreeMap;
 
 // Iron crates
 use iron::prelude::*;
@@ -39,9 +38,9 @@ impl Key for AppDb { type Value = PostgresPool; }
 
 // Helper methods
 fn setup_connection_pool(cn_str: &str, pool_size: u32) -> PostgresPool {
-    let manager = ::r2d2_postgres::PostgresConnectionManager::new(cn_str, ::postgres::SslMode::None).unwrap();
-    let config = ::r2d2::Config::builder().pool_size(pool_size).build();
-    ::r2d2::Pool::new(config, manager).unwrap()
+    let manager = PostgresConnectionManager::new(cn_str, ::postgres::SslMode::None).unwrap();
+    let config = r2d2::Config::builder().pool_size(pool_size).build();
+    r2d2::Pool::new(config, manager).unwrap()
 }
 
 

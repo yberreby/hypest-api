@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>57275718-164E-4708-9529-BD8CC15831EB</string>
+	<key>IDESourceControlProjectName</key>
+	<string>hypest</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>CF42E98F77B40456AC2C0441FE9FFC67F64C0DD9</key>
+		<string>github.com:Jhunn/hypest.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>swift/hypest/hypest.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>CF42E98F77B40456AC2C0441FE9FFC67F64C0DD9</key>
+		<string>../../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>github.com:Jhunn/hypest.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>CF42E98F77B40456AC2C0441FE9FFC67F64C0DD9</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>CF42E98F77B40456AC2C0441FE9FFC67F64C0DD9</string>
+			<key>IDESourceControlWCCName</key>
+			<string>hypest</string>
+		</dict>
+	</array>
+</dict>
+</plist>

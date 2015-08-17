@@ -1,162 +1,164 @@
-#![feature(custom_derive, plugin)]
-#![plugin(serde_macros)]
+#![cfg_attr(test, allow(dead_code))]
 
-#[macro_use]
-extern crate nickel; // HTTP server
-extern crate hyper;
-extern crate postgres; // postgres database management
-extern crate chrono; // SQL DATE type management
-extern crate nickel_postgres; // postgres middleware
-extern crate plugin;
-extern crate rustc_serialize; // JSON
-extern crate serde; // JSON
-extern crate serde_json; // JSON
-extern crate r2d2; // pool of threads
+extern crate iron;
+extern crate persistent;
+extern crate router;
+extern crate mount;
+extern crate staticfile;
 
-use nickel::{
-  Nickel, HttpRouter, StaticFilesHandler, MediaType, QueryString, JsonBody
-};
-use plugin::{Plugin, Pluggable};
-use postgres::SslMode;
-use chrono::*;
-use r2d2::NopErrorHandler;
-use nickel_postgres::PostgresMiddleware;
-use nickel_postgres::PostgresRequestExtensions;
-use rustc_serialize::json::{self, Json, ToJson};
+extern crate postgres;
+extern crate r2d2;
+extern crate r2d2_postgres;
+
+extern crate rustc_serialize;
+
+/// Standard lib crates
+use std::env;
+use std::net::*;
+use std::path::Path;
 use std::collections::BTreeMap;
 
+// Json crates
+use rustc_serialize::json;
+use rustc_serialize::json::{ToJson, Json};
 
+// Iron crates
+use iron::prelude::*;
+use iron::status;
+use iron::typemap::Key;
+use router::Router;
+use mount::Mount;
+use staticfile::Static;
+use persistent::{Write,Read};
 
-#[derive(Serialize, Deserialize, Debug)]
-struct PictureDBData {
-    pub id: i32,
-    pub author: String,
-    pub description: String,
-    pub gps_lat: f64,
-    pub gps_long: f64,
-    pub date_taken: String,
-    pub rating: Option<f32>, // reting is set to -1 when there's no rating.
-    pub likes: i32, // likes as 0 value default
+// Postgres crates
+use r2d2::{Pool, PooledConnection};
+use r2d2_postgres::{PostgresConnectionManager};
+
+// Types
+
+pub type PostgresPool = Pool<PostgresConnectionManager>;
+pub type PostgresPooledConnection = PooledConnection<PostgresConnectionManager>;
+
+#[derive(Copy, Clone)]
+pub struct HitCounter;
+impl Key for HitCounter { type Value = usize; }
+
+pub struct AppDb;
+impl Key for AppDb { type Value = PostgresPool; }
+
+struct Team {
+    name: String,
+    points: u16
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
-struct PictureMetadata {
-    pub author: String,
-    pub description: String,
-    pub rating: Option<f32>,
-    pub gps_lat: f64,
-    pub gps_long: f64,
+impl ToJson for Team {
+    fn to_json(&self) -> Json {
+        let mut m: BTreeMap<String, Json> = BTreeMap::new();
+        m.insert("name".to_string(), self.name.to_json());
+        m.insert("points".to_string(), self.points.to_json());
+        m.to_json()
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct PictureReturnId {
-    pub id: i32,
+// Helper methods
+fn setup_connection_pool(cn_str: &str, pool_size: u32) -> PostgresPool {
+    let manager = ::r2d2_postgres::PostgresConnectionManager::new(cn_str, ::postgres::SslMode::None).unwrap();
+    let config = ::r2d2::Config::builder().pool_size(pool_size).build();
+    ::r2d2::Pool::new(config, manager).unwrap()
 }
 
-
-/// Format the date in the dd/mm/yyyy format.
-fn format_date(date: &chrono::NaiveDate) -> String {
-    format!("{}/{}/{}", date.day(), date.month(), date.year())
+fn insert_dummy_data(conn :&PostgresPooledConnection) {
+    conn.execute("DROP TABLE IF EXISTS messages;", &[]).unwrap();
+    conn.execute("CREATE TABLE IF NOT EXISTS messages (id INT PRIMARY KEY);", &[]).unwrap();
+    conn.execute("INSERT INTO messages VALUES (1);", &[]).unwrap();
+    conn.execute("INSERT INTO messages VALUES (2);", &[]).unwrap();
+    conn.execute("INSERT INTO messages VALUES (3);", &[]).unwrap();
 }
 
+fn get_team_dummy_data() -> BTreeMap<String, Json> {
+    let mut data = BTreeMap::new();
+    let teams = vec![
+        Team { name: "Jake Scott".to_string(), points: 11u16 },
+        Team { name: "Adam Reeve".to_string(), points: 19u16 },
+        Team { name: "Richard Downer".to_string(), points: 22u16 }
+    ];
+    data.insert("teams".to_string(), teams.to_json());
+    data
+}
 
+// Routes
+fn environment(_: &mut Request) -> IronResult<Response> {
+    let powered_by:String = match env::var("POWERED_BY") {
+        Ok(val) => val,
+        Err(_) => "Iron".to_string()
+    };
+    let message = format!("Powered by: {}, pretty cool aye", powered_by);
+    Ok(Response::with((status::Ok, message)))
+}
+
+fn json(_: &mut Request) -> IronResult<Response> {
+    let data = get_team_dummy_data();
+    let encoded = json::encode(&data).unwrap();
+    let mut response = Response::new();
+    response.set_mut(status::Ok);
+    response.set_mut(encoded);
+    Ok(response)
+}
+
+fn posts(req: &mut Request) -> IronResult<Response> {
+    let ref post_id = req.extensions.get::<Router>().unwrap().find("post_id").unwrap_or("none");
+    Ok(Response::with((status::Ok, "PostId: {}", *post_id)))
+}
+
+fn hits(req: &mut Request) -> IronResult<Response> {
+    let mutex = req.get::<Write<HitCounter>>().unwrap();
+    let mut count = mutex.lock().unwrap();
+    *count += 1;
+    Ok(Response::with((status::Ok, format!("Hits: {}", *count))))
+}
+
+fn database(req: &mut Request) -> IronResult<Response> {
+    let pool = req.get::<Read<AppDb>>().unwrap();
+    let conn = pool.get().unwrap();
+    let stmt = conn.prepare("SELECT id FROM messages;").unwrap();
+    for row in stmt.query(&[]).unwrap() {
+        let id: i32 = row.get(0);
+        println!("id: {}", id);
+    }
+    Ok(Response::with((status::Ok, format!("Db: {}", "ok"))))
+}
+
+// Main
 fn main() {
-    let dbpool = PostgresMiddleware::new("postgresql://postgres:@127.0.0.1/hypest",
-                                     SslMode::None,
-                                     5, // <--- number of connections to the DB, I think
-                                     Box::new(NopErrorHandler)).unwrap();
+    let conn_string:String = match env::var("DATABASE_URL") {
+        Ok(val) => val,
+        Err(_) => "postgres://dbuser:dbpass@localhost:5432/test".to_string()
+    };
 
+    println!("connecting to postgres: {}", conn_string);
+    let pool = setup_connection_pool(&conn_string, 6);
+    let conn = pool.get().unwrap();
 
-    let mut server = Nickel::new();
-    server.utilize(StaticFilesHandler::new("/home/jhun/Code/rust/assets/"));
-    server.utilize(dbpool);
+    println!("inserting dummy data.");
+    insert_dummy_data(&conn);
 
-    server.get("/pictures_in_area/", middleware! { |req, mut res| {
-        /*
-            get all pictures in the given area
-            LATITUDE: y (lat -> colone -> vertical)
-            LONGITUDE: x (long -> ligne -> horizontal)
-        */
+    let mut router = Router::new();
+    router.get("/", environment);
+    router.get("/json", json);
+    router.get("/posts/:post_id", posts);
+    router.get("/hits", hits);
+    router.get("/database", database);
 
-        res.set(MediaType::Json); // HTTP header : Content-Type: application/json
+    let mut mount = Mount::new();
+    mount.mount("/", router);
+    mount.mount("/static", Static::new(Path::new("./src/static/")));
 
-        let conn = req.db_conn();
-        let query = req.query();
+    let mut middleware = Chain::new(mount);
+    middleware.link(Write::<HitCounter>::both(0));
+    middleware.link(Read::<AppDb>::both(pool));
 
-        // get the show type
-        let order_by = query.get("order_by").unwrap();
-
-        // On vérifie juste que order_by ait une valeur connue, si ce n'est pas le cas, panic.
-        match order_by {
-          "likes" | "rating" | "date_taken" => {},
-          _ => panic!("bad input (SQL injection attempt or typo)")
-        };
-
-        // get the border coords
-        let left_longitude: f64 = query.get("left_long").unwrap().parse().unwrap();
-        let right_longitude: f64 = query.get("right_long").unwrap().parse().unwrap();
-        let top_latitude: f64 = query.get("top_lat").unwrap().parse().unwrap();
-        let bottom_latitude: f64 = query.get("bottom_lat").unwrap().parse().unwrap();
-
-        let stmt = conn.prepare(&format!("SELECT * FROM pictures
-                                 WHERE gps_long BETWEEN SYMMETRIC $1 AND $2
-                                 AND gps_lat BETWEEN SYMMETRIC $3 AND $4
-                                 AND uploaded=TRUE
-                                 ORDER BY {} DESC LIMIT 50", order_by)).unwrap();  // prepare the query
-
-        let mut pictures = Vec::new(); // create the PictureDBData vector
-
-        // fill the vector with query's result
-        for row in stmt.query(&[&left_longitude, &right_longitude, &top_latitude, &bottom_latitude]).unwrap() {
-            pictures.push(PictureDBData {
-                id: row.get("id"),
-                author: row.get("author"),
-                description: row.get("description"), // optional
-                gps_lat: row.get("gps_lat"),
-                gps_long: row.get("gps_long"),
-                date_taken: format_date(&row.get("date_taken")),
-                rating: row.get("rating"), // optional
-                likes: row.get("likes"),
-            });
-        }
-
-        serde_json::ser::to_string(&pictures).unwrap() // return the json value of pictures vec
-    }});
-
-
-    // Accepts only JSON
-    server.post("/pictures/", middleware! { |req, mut res| {
-        let conn = req.db_conn();
-        res.set(MediaType::Json); // HTTP header : Content-Type: application/json
-
-        // retreive the metadata in JSON
-        let pic_metadata = req.json_as::<PictureMetadata>().unwrap();
-
-        let stmt = conn.prepare("INSERT INTO pictures (author, description, gps_lat, gps_long, date_taken, rating, uploaded)
-                                VALUES($1, $2, $3, $4, NOW(), -1, FALSE)
-                                RETURNING id").unwrap();
-
-        let query = stmt.query(&[&pic_metadata.author, &pic_metadata.description, &pic_metadata.gps_lat, &pic_metadata.gps_long]);
-        let rows = query.iter()
-                        .next()
-                        .unwrap();
-
-        let first_and_only_row = rows.get(0); // getting the first and only one row
-
-        let pic_id = PictureReturnId { // creating an ID struct to convert in JSON
-            id: first_and_only_row.get("id"),
-        };
-
-        serde_json::ser::to_string(&pic_id).unwrap() // returning the id in json
-    }});
-
-
-    
-    server.put("/pictures/:id", middleware! { |req, res| {
-            // WIP
-    }});
-
-
-    server.listen("127.0.0.1:6767"); // listen
-
+    let host = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 8080);
+    println!("listening on http://{}", host);
+    Iron::new(middleware).http(host).unwrap();
 }

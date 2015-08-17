@@ -42,20 +42,15 @@ fn setup_connection_pool(cn_str: &str, pool_size: u32) -> PostgresPool {
     r2d2::Pool::new(config, manager).unwrap()
 }
 
-
-// Routes
-fn environment(_: &mut Request) -> IronResult<Response> {
-    let message = "Hello from a handler".to_owned();
-    Ok(Response::with((status::Ok, message)))
-}
-
-
 // Main
 fn main() {
     let pool = setup_connection_pool("postgresql://postgres:@127.0.0.1/hypest", 6);
 
     let mut router = Router::new();
-    router.get("/", environment);
+    router.get("/", move |_: &mut Request| {
+      let message = "Hello from a handler".to_owned();
+      Ok(Response::with((status::Ok, message)))
+    });
 
     let mut mount = Mount::new();
     mount.mount("/", router);

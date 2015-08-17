@@ -3,8 +3,6 @@
 /src/tasks.txt
 /src/database.txt
 
-# XCode
-
 # Xcode
 .DS_Store
 build/

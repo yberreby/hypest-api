@@ -27,5 +27,5 @@ Pods
 # Exclude personal Xcode user settings
 xcuserdata/
 
-hypestTests/
-project.xcworkspace/
+/swift/app/hypestTests/
+/swift/app/project.xcworkspace/

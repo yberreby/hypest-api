@@ -53,6 +53,12 @@ struct PictureReturnId {
     pub id: i32,
 }
 
+#[derive(RustcDecodable, RustcEncodable)]
+struct PictureUploadId {
+    pub id: i32,
+}
+
+
 
 /// Format the date in the dd/mm/yyyy format.
 fn format_date(date: &chrono::NaiveDate) -> String {
@@ -63,7 +69,7 @@ fn format_date(date: &chrono::NaiveDate) -> String {
 fn main() {
     let dbpool = PostgresMiddleware::new("postgresql://postgres:@127.0.0.1/hypest",
                                      SslMode::None,
-                                     5, // <--- number of connections to the DB, I think
+                                     5,
                                      Box::new(NopErrorHandler)).unwrap();
 
 
@@ -74,11 +80,9 @@ fn main() {
     server.get("/pictures_in_area/", middleware! { |req, mut res| {
         /*
             get all pictures in the given area
-            LATITUDE: y (lat -> colone -> vertical)
-            LONGITUDE: x (long -> ligne -> horizontal)
         */
 
-        res.set(MediaType::Json); // HTTP header : Content-Type: application/json
+        res.set(MediaType::Json); // HTTP header : Content-Type: application/json http://notresite.com/pictures_in_area?order_by=likes&
 
         let conn = req.db_conn();
         let query = req.query();
@@ -86,10 +90,10 @@ fn main() {
         // get the show type
         let order_by = query.get("order_by").unwrap();
 
-        // On vérifie juste que order_by ait une valeur connue, si ce n'est pas le cas, panic.
+        // order_by content check
         match order_by {
           "likes" | "rating" | "date_taken" => {},
-          _ => panic!("bad input (SQL injection attempt or typo)")
+          _ => panic!("bad input")
         };
 
         // get the border coords
@@ -126,17 +130,23 @@ fn main() {
 
     // Accepts only JSON
     server.post("/pictures/", middleware! { |req, mut res| {
+        /*
+            inserting picture's metadata into the database.
+            the API returns the id of the created row, and returns this id.
+            the client then needs to upload the picture.
+        */
+
         let conn = req.db_conn();
-        res.set(MediaType::Json); // HTTP header : Content-Type: application/json
+        res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
 
         // retreive the metadata in JSON
         let pic_metadata = req.json_as::<PictureMetadata>().unwrap();
 
         let stmt = conn.prepare("INSERT INTO pictures (author, description, gps_lat, gps_long, date_taken, rating, uploaded)
-                                VALUES($1, $2, $3, $4, NOW(), -1, FALSE)
+                                VALUES($1, $2, $3, $4, NOW(), $5, FALSE)
                                 RETURNING id").unwrap();
 
-        let query = stmt.query(&[&pic_metadata.author, &pic_metadata.description, &pic_metadata.gps_lat, &pic_metadata.gps_long]);
+        let query = stmt.query(&[&pic_metadata.author, &pic_metadata.description, &pic_metadata.gps_lat, &pic_metadata.gps_long, &pic_metadata.rating]);
         let rows = query.iter()
                         .next()
                         .unwrap();
@@ -151,9 +161,21 @@ fn main() {
     }});
 
 
-    
-    server.put("/pictures/:id", middleware! { |req, res| {
-            // WIP
+
+    server.post("/u_picture", middleware! { |req, res| {
+        /*
+            assuming the iOS client has uploaded the picture,
+            this POST request is for updating "uploaded" column to TRUE.
+        */
+
+        let conn = req.db_conn();
+
+        let pic_id = req.json_as::<PictureUploadId>().unwrap();
+        let stmt = conn.prepare("UPDATE pictures
+                                SET uploaded=TRUE
+                                WHERE id=$1").unwrap();
+        stmt.query(&[&pic_id.id]);
+
     }});
 
 

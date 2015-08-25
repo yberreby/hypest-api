@@ -1,4 +1,4 @@
-#![feature(custom_derive, plugin)]
+#![feature(custom_derive, plugin, io, convert)]
 #![plugin(serde_macros)]
 
 #[macro_use]
@@ -23,8 +23,11 @@ use r2d2::NopErrorHandler;
 use nickel_postgres::PostgresMiddleware;
 use nickel_postgres::PostgresRequestExtensions;
 use rustc_serialize::json::{self, Json, ToJson};
-use std::collections::BTreeMap;
 
+use std::collections::BTreeMap;
+use std::io;
+use std::io::prelude::*;
+use std::fs::File;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -48,13 +51,8 @@ struct PictureMetadata {
     pub gps_long: f64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
 struct PictureReturnId {
-    pub id: i32,
-}
-
-#[derive(RustcDecodable, RustcEncodable)]
-struct PictureUploadId {
     pub id: i32,
 }
 
@@ -162,21 +160,31 @@ fn main() {
 
 
 
-    server.post("/u_picture", middleware! { |req, res| {
+    server.put("/pictures/:id", middleware! { |req, res| {
         /*
             assuming the iOS client has uploaded the picture,
-            this POST request is for updating "uploaded" column to TRUE.
+            this PUT request is for updating "uploaded" column to TRUE.
         */
 
         let conn = req.db_conn();
+        let pic_id = req.json_as::<PictureReturnId>().unwrap();
 
-        let pic_id = req.json_as::<PictureUploadId>().unwrap();
+        let mut body = vec![]; // create body content
+        req.origin.read_to_end(&mut body).unwrap(); // read the request's body
+
+
+        let mut f = File::create(format!("../pictures/{:?}.jpg", pic_id)).unwrap();
+        f.write_all(body.as_slice());
+
+
+        // update the uploaded column
         let stmt = conn.prepare("UPDATE pictures
                                 SET uploaded=TRUE
                                 WHERE id=$1").unwrap();
         stmt.query(&[&pic_id.id]);
 
     }});
+
 
 
     server.listen("127.0.0.1:6767"); // listen

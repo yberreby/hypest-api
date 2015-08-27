@@ -28,6 +28,7 @@ use std::collections::BTreeMap;
 use std::io;
 use std::io::prelude::*;
 use std::fs::File;
+use std::io::BufReader;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -134,6 +135,8 @@ fn main() {
             the client then needs to upload the picture.
         */
 
+
+
         let conn = req.db_conn();
         res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
 
@@ -166,22 +169,27 @@ fn main() {
             this PUT request is for updating "uploaded" column to TRUE.
         */
 
+        let buf_size = 3*1024*1024;
         let conn = req.db_conn();
-        let pic_id = req.json_as::<PictureReturnId>().unwrap();
 
-        let mut body = vec![]; // create body content
-        req.origin.read_to_end(&mut body).unwrap(); // read the request's body
+        let pic_id = req.param("id").unwrap()
+                                    .parse::<i32>()
+                                    .ok()
+                                    .expect("invalid id");
+        println!("{:?}", pic_id);
+        let mut bytes = Vec::<u8>::with_capacity(buf_size);
+        req.origin.read_to_end(&mut bytes).unwrap(); // read the request's body
+        println!("{:?}", bytes);
 
-
-        let mut f = File::create(format!("../pictures/{:?}.jpg", pic_id)).unwrap();
-        f.write_all(body.as_slice());
+        let mut f = File::create(format!("pictures/{:?}.jpg", pic_id)).unwrap();
+        f.write_all(bytes.as_slice());
 
 
         // update the uploaded column
         let stmt = conn.prepare("UPDATE pictures
                                 SET uploaded=TRUE
                                 WHERE id=$1").unwrap();
-        stmt.query(&[&pic_id.id]);
+        stmt.query(&[&pic_id]);
 
     }});
 

@@ -169,24 +169,23 @@ fn main() {
             this PUT request is for updating "uploaded" column to TRUE.
         */
 
-        let buf_size = 3*1024*1024;
         let conn = req.db_conn();
+        let buf_size = 3*1024*1024; // 3mb buffer size
 
         let pic_id = req.param("id").unwrap()
                                     .parse::<i32>()
                                     .ok()
                                     .expect("invalid id");
-        let mut bytes = Vec::<u8>::with_capacity(buf_size);
+        let mut bytes = Vec::<u8>::with_capacity(buf_size); // 3mb buffer size
         req.origin.read_to_end(&mut bytes).unwrap(); // read the request's body
 
-        let mut f = File::create(format!("pictures/{:?}.jpg", pic_id)).unwrap();
-        f.write_all(bytes.as_slice());
+        let mut f = File::create(format!("pictures/{:?}.jpg", pic_id)).unwrap(); // create the file with the given id (in url) as name
+        f.write_all(bytes.as_slice()); // write bytes received in the file
 
 
-        // update the uploaded column
         let stmt = conn.prepare("UPDATE pictures
                                 SET uploaded=TRUE
-                                WHERE id=$1").unwrap();
+                                WHERE id=$1").unwrap(); // update the uploaded column
         stmt.query(&[&pic_id]);
 
     }});

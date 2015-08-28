@@ -176,10 +176,8 @@ fn main() {
                                     .parse::<i32>()
                                     .ok()
                                     .expect("invalid id");
-        println!("{:?}", pic_id);
         let mut bytes = Vec::<u8>::with_capacity(buf_size);
         req.origin.read_to_end(&mut bytes).unwrap(); // read the request's body
-        println!("{:?}", bytes);
 
         let mut f = File::create(format!("pictures/{:?}.jpg", pic_id)).unwrap();
         f.write_all(bytes.as_slice());

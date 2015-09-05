@@ -81,7 +81,7 @@ fn main() {
             get all pictures in the given area
         */
 
-        res.set(MediaType::Json); // HTTP header : Content-Type: application/json http://notresite.com/pictures_in_area?order_by=likes&
+        res.set(MediaType::Json); // HTTP header : Content-Type: application/json
 
         let conn = req.db_conn();
         let query = req.query();
@@ -95,11 +95,18 @@ fn main() {
           _ => panic!("bad input")
         };
 
+        /*
+            tl_lat = top left latitude
+            tl_long = top left longitude
+            br_lat = bottom right latitude
+            br_long = bottom right longitude
+        */
+
         // get the border coords
-        let left_longitude: f64 = query.get("left_long").unwrap().parse().unwrap();
-        let right_longitude: f64 = query.get("right_long").unwrap().parse().unwrap();
-        let top_latitude: f64 = query.get("top_lat").unwrap().parse().unwrap();
-        let bottom_latitude: f64 = query.get("bottom_lat").unwrap().parse().unwrap();
+        let tl_lat: f64 = query.get("tl_lat").unwrap().parse().unwrap();
+        let tl_long: f64 = query.get("tl_long").unwrap().parse().unwrap();
+        let br_lat: f64 = query.get("br_lat").unwrap().parse().unwrap();
+        let br_long: f64 = query.get("br_long").unwrap().parse().unwrap();
 
         let stmt = conn.prepare(&format!("SELECT * FROM pictures
                                  WHERE gps_long BETWEEN SYMMETRIC $1 AND $2
@@ -110,7 +117,7 @@ fn main() {
         let mut pictures = Vec::new(); // create the PictureDBData vector
 
         // fill the vector with query's result
-        for row in stmt.query(&[&left_longitude, &right_longitude, &top_latitude, &bottom_latitude]).unwrap() {
+        for row in stmt.query(&[&tl_long, &br_long, &tl_lat, &br_lat]).unwrap() {
             pictures.push(PictureDBData {
                 id: row.get("id"),
                 author: row.get("author"),
@@ -122,6 +129,8 @@ fn main() {
                 likes: row.get("likes"),
             });
         }
+
+        println!("[*] Instruction exectued");
 
         serde_json::ser::to_string(&pictures).unwrap() // return the json value of pictures vec
     }});
@@ -192,6 +201,6 @@ fn main() {
 
 
 
-    server.listen("127.0.0.1:6767"); // listen
+    server.listen("0.0.0.0:6767"); // listen
 
 }

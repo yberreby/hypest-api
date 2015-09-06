@@ -23,6 +23,7 @@ use r2d2::NopErrorHandler;
 use nickel_postgres::PostgresMiddleware;
 use nickel_postgres::PostgresRequestExtensions;
 use rustc_serialize::json::{self, Json, ToJson};
+use hyper::header::AccessControlAllowOrigin;
 
 use std::collections::BTreeMap;
 use std::io;
@@ -82,6 +83,7 @@ fn main() {
         */
 
         res.set(MediaType::Json); // HTTP header : Content-Type: application/json
+        res.set(AccessControlAllowOrigin::Any);
 
         let conn = req.db_conn();
         let query = req.query();

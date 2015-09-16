@@ -74,16 +74,17 @@ fn main() {
 
 
     let mut server = Nickel::new();
-    server.utilize(StaticFilesHandler::new("/home/jhun/Code/rust/assets/"));
+    server.utilize(StaticFilesHandler::new("assets"));
     server.utilize(dbpool);
 
     server.get("/pictures_in_area/", middleware! { |req, mut res| {
         /*
-            get all pictures in the given area
+            get all pictures metadatas in the given area
         */
 
-        res.set(MediaType::Json); // HTTP header : Content-Type: application/json
-        res.set(AccessControlAllowOrigin::Any);
+        // HTTP headers
+        res.set(MediaType::Json); // Content-Type: application/json
+        res.set(AccessControlAllowOrigin::Any); // Disable CORS for AJAX requests
 
         let conn = req.db_conn();
         let query = req.query();
@@ -114,7 +115,7 @@ fn main() {
                                  WHERE gps_long BETWEEN SYMMETRIC $1 AND $2
                                  AND gps_lat BETWEEN SYMMETRIC $3 AND $4
                                  AND uploaded=TRUE
-                                 ORDER BY {} DESC LIMIT 50", order_by)).unwrap();  // prepare the query
+                                 ORDER BY {} DESC", order_by)).unwrap();  // prepare the query
 
         let mut pictures = Vec::new(); // create the PictureDBData vector
 
@@ -177,7 +178,8 @@ fn main() {
     server.put("/pictures/:id", middleware! { |req, res| {
         /*
             assuming the iOS client has uploaded the picture,
-            this PUT request is for updating "uploaded" column to TRUE.
+            this PUT request is for updating "uploaded" column to TRUE
+            and uploading the picture's binary
         */
 
         let conn = req.db_conn();
@@ -190,7 +192,7 @@ fn main() {
         let mut bytes = Vec::<u8>::with_capacity(buf_size); // 3mb buffer size
         req.origin.read_to_end(&mut bytes).unwrap(); // read the request's body
 
-        let mut f = File::create(format!("pictures/{:?}.jpg", pic_id)).unwrap(); // create the file with the given id (in url) as name
+        let mut f = File::create(format!("assets/pictures/{:?}.jpg", pic_id)).unwrap(); // create the file with the given id (in url) as name
         f.write_all(bytes.as_slice()); // write bytes received in the file
 
 

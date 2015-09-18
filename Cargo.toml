@@ -6,7 +6,6 @@ authors = [ "Jhun <whkyomaro@gmail.com>" ]
 
 [dependencies]
 
-nickel = "*"
 hyper = "*"
 plugin = "*"
 postgres = { version = "0.9", features = ["chrono"] }
@@ -16,7 +15,12 @@ serde_json = "*"
 serde_macros = "*"
 rustc-serialize = "*"
 r2d2 = "*"
-rexiv2 = "0.2.3"
 
 [dependencies.nickel_postgres]
 git = "https://github.com/filsmick/nickel-postgres.git"
+branch = "hypest-tmp-fix"
+
+[dependencies.nickel]
+git = "https://github.com/nickel-org/nickel.rs"
+version = "*"
+features = ["unstable"]

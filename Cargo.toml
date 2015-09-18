@@ -16,7 +16,7 @@ serde_json = "*"
 serde_macros = "*"
 rustc-serialize = "*"
 r2d2 = "*"
-rexiv2 = "0.2.3"
+pkg-config = "*"
 
 [dependencies.nickel_postgres]
 git = "https://github.com/filsmick/nickel-postgres.git"

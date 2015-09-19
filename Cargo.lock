@@ -4,7 +4,7 @@ version = "0.0.1"
 dependencies = [
  "chrono 0.2.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "nickel 0.6.0 (git+https://github.com/nickel-org/nickel.rs.git)",
+ "nickel 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nickel_postgres 0.0.0 (git+https://github.com/filsmick/nickel-postgres.git?branch=hypest-tmp-fix)",
  "plugin 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "postgres 0.9.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -60,11 +60,6 @@ dependencies = [
  "num 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "compiletest_rs"
-version = "0.0.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cookie"
@@ -207,10 +202,9 @@ dependencies = [
 
 [[package]]
 name = "nickel"
-version = "0.6.0"
-source = "git+https://github.com/nickel-org/nickel.rs.git#1f78ab244b3b7f4000a3c35482505cbc2c39ce50"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "compiletest_rs 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "groupable 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -228,9 +222,9 @@ dependencies = [
 [[package]]
 name = "nickel_postgres"
 version = "0.0.0"
-source = "git+https://github.com/filsmick/nickel-postgres.git?branch=hypest-tmp-fix#8e36194afa252328f548e15b17c809b18bc31fa2"
+source = "git+https://github.com/filsmick/nickel-postgres.git?branch=hypest-tmp-fix#8eba0d9e2cc44b42569cdee4c8cf08deefeb2a0e"
 dependencies = [
- "nickel 0.6.0 (git+https://github.com/nickel-org/nickel.rs.git)",
+ "nickel 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "plugin 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "postgres 0.9.6 (registry+https://github.com/rust-lang/crates.io-index)",

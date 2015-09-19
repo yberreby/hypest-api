@@ -1,11 +1,10 @@
 [package]
-
 name = "server"
 version = "0.0.1"
 authors = [ "Jhun <whkyomaro@gmail.com>" ]
 
 [dependencies]
-
+nickel = "0.7.0"
 hyper = "*"
 plugin = "*"
 postgres = { version = "0.9", features = ["chrono"] }
@@ -19,8 +18,3 @@ r2d2 = "*"
 [dependencies.nickel_postgres]
 git = "https://github.com/filsmick/nickel-postgres.git"
 branch = "hypest-tmp-fix"
-
-[dependencies.nickel]
-git = "https://github.com/nickel-org/nickel.rs"
-version = "*"
-features = ["unstable"]

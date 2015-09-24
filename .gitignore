@@ -1,4 +1,4 @@
 # Rust API
 /target
 /src/tasks.txt
-/src/database.txt
+tables.txt

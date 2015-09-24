@@ -32,7 +32,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
 struct PictureDBData {
     pub id: i32,
     pub author: String,
@@ -44,7 +44,7 @@ struct PictureDBData {
     pub likes: i32, // likes as 0 value default
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
 struct PictureMetadata {
     pub author: String,
     pub description: String,
@@ -58,6 +58,18 @@ struct PictureReturnId {
     pub id: i32,
 }
 
+#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
+struct User {
+    pub id: i32,
+    // personal data
+    pub username: String,
+    pub email: String,
+    pub password: String,
+    pub date_created: String,
+    // public data
+    pub nb_pictures: i32,
+    pub hypes: i32,
+}
 
 
 /// Format the date in the dd/mm/yyyy format.
@@ -203,6 +215,16 @@ fn main() {
 
     }});
 
+
+
+    server.post("users/create", middleware! { |req, res| {
+        /*
+            creates a new user in database
+        */
+
+        let conn = req.db_conn();
+
+    }});
 
 
     server.listen("0.0.0.0:6767"); // listen

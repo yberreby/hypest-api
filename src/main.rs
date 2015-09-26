@@ -54,18 +54,16 @@ struct PictureMetadata {
 }
 
 #[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
-struct PictureReturnId {
+struct ReturnId {
     pub id: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
 struct User {
-    pub id: i32,
     // personal data
     pub username: String,
     pub email: String,
     pub password: String,
-    pub date_created: String,
     // public data
     pub nb_pictures: i32,
     pub hypes: i32,
@@ -159,26 +157,27 @@ fn main() {
             the client then needs to upload the picture.
         */
 
-
-
-        let conn = req.db_conn();
         res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
 
+        let conn = req.db_conn();
         // retreive the metadata in JSON
         let pic_metadata = req.json_as::<PictureMetadata>().unwrap();
 
-        let stmt = conn.prepare("INSERT INTO pictures (author, description, gps_lat, gps_long, date_taken, rating, uploaded)
+        let stmt = conn.prepare("INSERT INTO pictures
+                                (author, description, gps_lat, gps_long, date_taken, rating, uploaded)
                                 VALUES($1, $2, $3, $4, NOW(), $5, FALSE)
                                 RETURNING id").unwrap();
-
-        let query = stmt.query(&[&pic_metadata.author, &pic_metadata.description, &pic_metadata.gps_lat, &pic_metadata.gps_long, &pic_metadata.rating]);
+        let query = stmt.query(&[&pic_metadata.author,
+                                &pic_metadata.description,
+                                &pic_metadata.gps_lat,
+                                &pic_metadata.gps_long,
+                                &pic_metadata.rating]);
         let rows = query.iter()
                         .next()
                         .unwrap();
 
         let first_and_only_row = rows.get(0); // getting the first and only one row
-
-        let pic_id = PictureReturnId { // creating an ID struct to convert in JSON
+        let pic_id = ReturnId { // creating an ID struct to convert in JSON
             id: first_and_only_row.get("id"),
         };
 
@@ -217,12 +216,37 @@ fn main() {
 
 
 
-    server.post("users/create", middleware! { |req, res| {
+    server.post("/users/create", middleware! { |req, mut res| {
         /*
             creates a new user in database
         */
 
+        res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
+
         let conn = req.db_conn();
+        let user_infos = req.json_as::<User>().unwrap();
+
+        let stmt = conn.prepare("INSERT INTO users
+                                (username, label, email, password, date_created, nb_pictures, hypes)
+                                VALUES($1, $2, $3, $4, NOW(), $5, $6)
+                                RETURNING id").unwrap();
+        let query = stmt.query(&[&user_infos.username,
+                    &user_infos.username,
+                    &user_infos.email,
+                    &user_infos.password,
+                    &user_infos.nb_pictures,
+                    &user_infos.hypes]);
+
+        let rows = query.iter()
+                        .next()
+                        .unwrap();
+
+        let first_and_only_row = rows.get(0); // getting the first and only one row
+        let pic_id = ReturnId { // creating an ID struct to convert in JSON
+            id: first_and_only_row.get("id"),
+        };
+
+        serde_json::ser::to_string(&pic_id).unwrap() // returning the id in json
 
     }});
 

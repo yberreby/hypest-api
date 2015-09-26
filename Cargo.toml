@@ -7,7 +7,7 @@ authors = [ "Jhun <whkyomaro@gmail.com>" ]
 nickel = "0.7.0"
 hyper = "*"
 plugin = "*"
-postgres = { version = "0.9", features = ["chrono"] }
+postgres = { version = "0.10", features = ["chrono"] }
 chrono = "0.2"
 serde = "*"
 serde_json = "*"

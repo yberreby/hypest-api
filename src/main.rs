@@ -12,6 +12,7 @@ extern crate rustc_serialize; // JSON
 extern crate serde; // JSON
 extern crate serde_json; // JSON
 extern crate r2d2; // pool of threads
+extern crate r2d2_postgres;
 
 use nickel::{
   Nickel, HttpRouter, StaticFilesHandler, MediaType, QueryString, JsonBody
@@ -19,11 +20,13 @@ use nickel::{
 use plugin::{Plugin, Pluggable};
 use postgres::SslMode;
 use chrono::*;
-use r2d2::NopErrorHandler;
+use r2d2::{NopErrorHandler, PooledConnection};
+use r2d2_postgres::PostgresConnectionManager;
 use nickel_postgres::PostgresMiddleware;
 use nickel_postgres::PostgresRequestExtensions;
 use rustc_serialize::json::{self, Json, ToJson};
 use hyper::header::AccessControlAllowOrigin;
+use serde_json::Value;
 
 use std::collections::BTreeMap;
 use std::io;
@@ -68,7 +71,6 @@ struct User {
     pub nb_pictures: i32,
     pub hypes: i32,
 }
-
 
 /// Format the date in the dd/mm/yyyy format.
 fn format_date(date: &chrono::NaiveDate) -> String {
@@ -216,7 +218,7 @@ fn main() {
 
 
 
-    server.post("/users/create", middleware! { |req, mut res| {
+    server.post("/users/", middleware! { |req, mut res| {
         /*
             creates a new user in database
         */
@@ -227,7 +229,7 @@ fn main() {
         let user_infos = req.json_as::<User>().unwrap();
 
         let stmt = conn.prepare("INSERT INTO users
-                                (username, label, email, password, date_created, nb_pictures, hypes)
+                                (username, nick, email, password, date_created, nb_pictures, hypes)
                                 VALUES($1, $2, $3, $4, NOW(), $5, $6)
                                 RETURNING id").unwrap();
         let query = stmt.query(&[&user_infos.username,
@@ -249,6 +251,56 @@ fn main() {
         serde_json::ser::to_string(&pic_id).unwrap() // returning the id in json
 
     }});
+
+
+    server.post("/users/:username", middleware! { |req, mut res| {
+        /*
+            update an user's infos depending of the content of the JSON body
+        */
+
+        /// Update the user's nick with given nick
+        fn update_nick(conn: &PooledConnection<PostgresConnectionManager>, username: &String, nick: &Value) {
+            let nick_str = nick.as_string().unwrap();
+            let stmt = conn.prepare("UPDATE users
+                                    SET nick = $1
+                                    WHERE username = $2").unwrap();
+
+            let query = stmt.query(&[&nick_str, &username]);
+        }
+
+        /// Update the user's email with given email
+        fn update_email(conn: &PooledConnection<PostgresConnectionManager>, username: &String, email: &Value) {
+            let email_str = email.as_string().unwrap();
+            let stmt = conn.prepare("UPDATE users
+                                    SET email = $1
+                                    WHERE username = $2").unwrap();
+
+            let query = stmt.query(&[&email_str, &username]);
+        }
+
+
+        let conn = req.db_conn();
+
+        let username = req.param("username").unwrap().to_owned();
+
+        let mut body = vec![];
+        req.origin.read_to_end(&mut body).unwrap();
+        let body_utf8 = String::from_utf8(body).unwrap();
+
+        let data: Value = serde_json::from_str(&body_utf8).unwrap();
+        let json_body = data.as_object().unwrap();
+
+        for (key, value) in json_body.iter() {
+            match &**key { // check what we want to update
+                "nick" => update_nick(&conn, &username, value),
+                "email" => update_email(&conn, &username, value),
+                _ => {}
+            }
+        }
+
+    }});
+
+
 
 
     server.listen("0.0.0.0:6767"); // listen

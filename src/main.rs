@@ -45,6 +45,7 @@ use std::io::Cursor;
 use std::io::prelude::*;
 use std::fs::File;
 use std::io::BufReader;
+use std::mem;
 
 
 #[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
@@ -269,13 +270,18 @@ fn main() {
 
         let password_hash = to_base64(&password_hash_bin);
 
+        /*
         let mut buf = Cursor::new(&salt[..]);
         let salt_big_endian = buf.read_u32::<BigEndian>().unwrap();
+        */
+
 
         let stmt = conn.prepare("INSERT INTO users
                                 (username, nick, email, password, date_created, nb_pictures, hypes, salt)
                                 VALUES($1, $2, $3, $4, NOW(), $5, $6, $7)
                                 RETURNING id").unwrap();
+
+        let salt: &[u8] = &salt;
 
         let query = stmt.query(&[&user_infos.username,
                     &user_infos.username,
@@ -283,18 +289,19 @@ fn main() {
                     &password_hash,
                     &user_infos.nb_pictures,
                     &user_infos.hypes,
-                    &salt_big_endian]);
+                    &salt]);
+
 
         let rows = query.iter()
                         .next()
                         .unwrap();
 
         let first_and_only_row = rows.get(0); // getting the first and only one row
-        let pic_id = ReturnId { // creating an ID struct to convert in JSON
+        let user_id = ReturnId { // creating an ID struct to convert in JSON
             id: first_and_only_row.get("id"),
         };
 
-        serde_json::ser::to_string(&pic_id).unwrap() // returning the id in json
+        serde_json::ser::to_string(&user_id).unwrap() // returning the id in json
 
     }});
 
@@ -358,7 +365,7 @@ fn main() {
         let user_infos = req.json_as::<LoginUser>().unwrap();
 
         // test if email exists
-        let stmt = conn.prepare("SELECT email, password
+        let stmt = conn.prepare("SELECT email, password, salt
                                 FROM users
                                 WHERE email = $1
                                 LIMIT 1").unwrap();
@@ -375,13 +382,20 @@ fn main() {
         if db_email == user_infos.email {
             // now test if password's hash is the same as db's hash
             let db_password: String = row.get("password");
-            /*
-            let user_password_hash =
+            let db_salt: Vec<u8> = row.get("salt");
 
-            if db_password == user_password_hash {
+            // hash the password with db's salt
+            let cost = 20000;
+            let mut password_hash_bin: Vec<u8> = vec![0; 24];
 
+            bcrypt(cost, &db_salt, &user_infos.password.into_bytes(), &mut password_hash_bin);
+
+            let password_hash = to_base64(&password_hash_bin);
+
+            if db_password == password_hash {
+                println!("Login ok");
             }
-            */
+
         }
 
     }});

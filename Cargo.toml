@@ -22,3 +22,6 @@ byteorder = "0.3.13"
 [dependencies.nickel_postgres]
 git = "https://github.com/filsmick/nickel-postgres.git"
 branch = "hypest-tmp-fix"
+
+[profile.release]
+debug = true

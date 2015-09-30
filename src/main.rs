@@ -13,23 +13,35 @@ extern crate serde; // JSON
 extern crate serde_json; // JSON
 extern crate r2d2; // pool of threads
 extern crate r2d2_postgres;
+extern crate crypto; // password hashing
+extern crate rand; // for password entropy
+extern crate byteorder;
 
 use nickel::{
   Nickel, HttpRouter, StaticFilesHandler, MediaType, QueryString, JsonBody
 };
+
 use plugin::{Plugin, Pluggable};
 use postgres::SslMode;
 use chrono::*;
 use r2d2::{NopErrorHandler, PooledConnection};
 use r2d2_postgres::PostgresConnectionManager;
-use nickel_postgres::PostgresMiddleware;
-use nickel_postgres::PostgresRequestExtensions;
-use rustc_serialize::json::{self, Json, ToJson};
+use nickel_postgres::{PostgresMiddleware, PostgresRequestExtensions};
 use hyper::header::AccessControlAllowOrigin;
 use serde_json::Value;
+use byteorder::{BigEndian, ReadBytesExt};
+
+use rustc_serialize::json::{self, Json, ToJson};
+use rustc_serialize::base64::ToBase64;
+use rustc_serialize::base64;
+use rustc_serialize::base64::Config;
+
+use crypto::digest::Digest;
+use crypto::bcrypt::bcrypt;
 
 use std::collections::BTreeMap;
 use std::io;
+use std::io::Cursor;
 use std::io::prelude::*;
 use std::fs::File;
 use std::io::BufReader;
@@ -72,9 +84,29 @@ struct User {
     pub hypes: i32,
 }
 
+#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
+struct LoginUser {
+    pub email: String,
+    pub password: String,
+}
+
+
 /// Format the date in the dd/mm/yyyy format.
 fn format_date(date: &chrono::NaiveDate) -> String {
     format!("{}/{}/{}", date.day(), date.month(), date.year())
+}
+
+/// Returns the base64 of a hash
+fn to_base64(input: &[u8]) -> String {
+    let config = Config {
+        char_set: base64::CharacterSet::Standard,
+        newline: base64::Newline::LF,
+        pad: false,
+        line_length: None
+    };
+
+    let hash: String = input.to_base64(config);
+    hash
 }
 
 
@@ -89,7 +121,7 @@ fn main() {
     server.utilize(StaticFilesHandler::new("assets"));
     server.utilize(dbpool);
 
-    server.get("/pictures_in_area/", middleware! { |req, mut res| {
+    server.get("/pictures_in_area", middleware! { |req, mut res| {
         /*
             get all pictures metadatas in the given area
         */
@@ -152,7 +184,7 @@ fn main() {
 
 
     // Accepts only JSON
-    server.post("/pictures/", middleware! { |req, mut res| {
+    server.post("/pictures", middleware! { |req, mut res| {
         /*
             inserting picture's metadata into the database.
             the API returns the id of the created row, and returns this id.
@@ -218,7 +250,7 @@ fn main() {
 
 
 
-    server.post("/users/", middleware! { |req, mut res| {
+    server.post("/users", middleware! { |req, mut res| {
         /*
             creates a new user in database
         */
@@ -228,16 +260,30 @@ fn main() {
         let conn = req.db_conn();
         let user_infos = req.json_as::<User>().unwrap();
 
+        // hash the password
+        let salt: [u8; 16] = rand::random();
+        let cost = 20000;
+        let mut password_hash_bin: Vec<u8> = vec![0; 24];
+
+        bcrypt(cost, &salt, &user_infos.password.into_bytes(), &mut password_hash_bin);
+
+        let password_hash = to_base64(&password_hash_bin);
+
+        let mut buf = Cursor::new(&salt[..]);
+        let salt_big_endian = buf.read_u32::<BigEndian>().unwrap();
+
         let stmt = conn.prepare("INSERT INTO users
-                                (username, nick, email, password, date_created, nb_pictures, hypes)
-                                VALUES($1, $2, $3, $4, NOW(), $5, $6)
+                                (username, nick, email, password, date_created, nb_pictures, hypes, salt)
+                                VALUES($1, $2, $3, $4, NOW(), $5, $6, $7)
                                 RETURNING id").unwrap();
+
         let query = stmt.query(&[&user_infos.username,
                     &user_infos.username,
                     &user_infos.email,
-                    &user_infos.password,
+                    &password_hash,
                     &user_infos.nb_pictures,
-                    &user_infos.hypes]);
+                    &user_infos.hypes,
+                    &salt_big_endian]);
 
         let rows = query.iter()
                         .next()
@@ -264,7 +310,6 @@ fn main() {
             let stmt = conn.prepare("UPDATE users
                                     SET nick = $1
                                     WHERE username = $2").unwrap();
-
             let query = stmt.query(&[&nick_str, &username]);
         }
 
@@ -274,8 +319,14 @@ fn main() {
             let stmt = conn.prepare("UPDATE users
                                     SET email = $1
                                     WHERE username = $2").unwrap();
-
             let query = stmt.query(&[&email_str, &username]);
+        }
+
+        /// Delete the given user
+        fn delete_user(conn: &PooledConnection<PostgresConnectionManager>, username: &String){
+            let stmt = conn.prepare("DELETE FROM users
+                                    WHERE username = $1").unwrap();
+            let query = stmt.query(&[&username]);
         }
 
 
@@ -294,13 +345,46 @@ fn main() {
             match &**key { // check what we want to update
                 "nick" => update_nick(&conn, &username, value),
                 "email" => update_email(&conn, &username, value),
+                "delete" => delete_user(&conn, &username),
                 _ => {}
             }
         }
 
     }});
 
+    server.post("/login", middleware! { |req, mut res| {
+        let conn = req.db_conn();
 
+        let user_infos = req.json_as::<LoginUser>().unwrap();
+
+        // test if email exists
+        let stmt = conn.prepare("SELECT email, password
+                                FROM users
+                                WHERE email = $1
+                                LIMIT 1").unwrap();
+
+        let query =  stmt.query(&[&user_infos.email]);
+
+        let rows = query.iter()
+                        .next()
+                        .unwrap();
+
+        let row = rows.get(0); // getting the row
+        let db_email: String = row.get("email");
+
+        if db_email == user_infos.email {
+            // now test if password's hash is the same as db's hash
+            let db_password: String = row.get("password");
+            /*
+            let user_password_hash =
+
+            if db_password == user_password_hash {
+
+            }
+            */
+        }
+
+    }});
 
 
     server.listen("0.0.0.0:6767"); // listen

@@ -387,34 +387,41 @@ fn main() {
                         .next()
                         .unwrap();
 
-        let row = rows.get(0); // getting the row
-        let db_email: String = row.get("email");
-
         let mut status_code = Vec::new();
 
-        if db_email == user_infos.email {
-            // now test if password's hash is the same as db's hash
-            let db_password: String = row.get("password");
-            let db_salt: Vec<u8> = row.get("salt");
+        if(rows.len() == 0){
+            &status_code.push(StatusCode{
+                code: 0
+            });
 
-            // hash the password with db's salt
-            let cost = 20000;
-            let mut password_hash_bin: Vec<u8> = vec![0; 24];
+        } else {
+            let row = rows.get(0); // getting the row
+            let db_email: String = row.get("email");
 
-            bcrypt(cost, &db_salt, &user_infos.password.into_bytes(), &mut password_hash_bin);
+            if db_email == user_infos.email {
+                // now test if password's hash is the same as db's hash
+                let db_password: String = row.get("password");
+                let db_salt: Vec<u8> = row.get("salt");
 
-            let password_hash: String = to_base64(&password_hash_bin);
+                // hash the password with db's salt
+                let cost = 20000;
+                let mut password_hash_bin: Vec<u8> = vec![0; 24];
 
-            if db_password == password_hash {
-                // if password matches return a status code 1
-                &status_code.push(StatusCode{
-                    code: 1
-                });
-            }  else {
-                // return status code 0
-                &status_code.push(StatusCode{
-                    code: 0
-                });
+                bcrypt(cost, &db_salt, &user_infos.password.into_bytes(), &mut password_hash_bin);
+
+                let password_hash: String = to_base64(&password_hash_bin);
+
+                if db_password == password_hash {
+                    // if password matches return a status code 1
+                    &status_code.push(StatusCode{
+                        code: 1
+                    });
+                }  else {
+                    // return status code 0
+                    &status_code.push(StatusCode{
+                        code: 0
+                    });
+                }
             }
         }
 

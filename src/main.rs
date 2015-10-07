@@ -13,7 +13,7 @@ extern crate serde; // JSON
 extern crate serde_json; // JSON
 extern crate r2d2; // pool of threads
 extern crate r2d2_postgres;
-extern crate crypto; // password hashing
+extern crate octavo;
 extern crate rand; // for password entropy
 extern crate byteorder;
 
@@ -34,7 +34,7 @@ use rustc_serialize::base64::ToBase64;
 use rustc_serialize::base64;
 use rustc_serialize::base64::Config;
 
-use crypto::bcrypt::bcrypt;
+use octavo::crypto::block::blowfish::bcrypt;
 
 use std::io::prelude::*;
 use std::fs::File;
@@ -256,10 +256,12 @@ fn main() {
 
         // hash the password
         let salt: [u8; 16] = rand::random();
+        let salt: &[u8] = &salt;
+
         let cost = 20000;
         let mut password_hash_bin: Vec<u8> = vec![0; 24];
 
-        bcrypt(cost, &salt, &user_data.password.into_bytes(), &mut password_hash_bin);
+        bcrypt(cost, salt, &user_data.password.into_bytes(), &mut password_hash_bin);
 
         let password_hash = to_base64(&password_hash_bin);
 
@@ -267,8 +269,6 @@ fn main() {
                                 (username, nick, email, password, date_created, nb_pictures, hypes, salt)
                                 VALUES($1, $2, $3, $4, NOW(), $5, $6, $7)
                                 RETURNING id").unwrap();
-
-        let salt: &[u8] = &salt;
 
         let rows = stmt.query(&[&user_data.username,
                     &user_data.username,

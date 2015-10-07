@@ -1,4 +1,4 @@
-#![feature(custom_derive, plugin, io, convert)]
+#![feature(custom_derive, plugin, convert)]
 #![plugin(serde_macros)]
 
 #[macro_use]
@@ -21,7 +21,7 @@ use nickel::{
   Nickel, HttpRouter, StaticFilesHandler, MediaType, QueryString, JsonBody
 };
 
-use plugin::{Plugin, Pluggable};
+use plugin::{Pluggable};
 use postgres::SslMode;
 use chrono::*;
 use r2d2::{NopErrorHandler, PooledConnection};
@@ -29,23 +29,15 @@ use r2d2_postgres::PostgresConnectionManager;
 use nickel_postgres::{PostgresMiddleware, PostgresRequestExtensions};
 use hyper::header::AccessControlAllowOrigin;
 use serde_json::Value;
-use byteorder::{BigEndian, ReadBytesExt};
 
-use rustc_serialize::json::{self, Json, ToJson};
 use rustc_serialize::base64::ToBase64;
 use rustc_serialize::base64;
 use rustc_serialize::base64::Config;
 
-use crypto::digest::Digest;
 use crypto::bcrypt::bcrypt;
 
-use std::collections::BTreeMap;
-use std::io;
-use std::io::Cursor;
 use std::io::prelude::*;
 use std::fs::File;
-use std::io::BufReader;
-use std::mem;
 
 
 #[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
@@ -247,13 +239,13 @@ fn main() {
         req.origin.read_to_end(&mut bytes).unwrap(); // read the request's body
 
         let mut f = File::create(format!("assets/pictures/{:?}.jpg", pic_id)).unwrap(); // create the file with the given id (in url) as name
-        f.write_all(bytes.as_slice()); // write bytes received in the file
+        f.write_all(bytes.as_slice()).unwrap(); // write bytes received in the file
 
 
         let stmt = conn.prepare("UPDATE pictures
                                 SET uploaded=TRUE
                                 WHERE id=$1").unwrap(); // update the uploaded column
-        stmt.query(&[&pic_id]);
+        stmt.query(&[&pic_id]).unwrap();
 
     }});
 
@@ -314,18 +306,15 @@ fn main() {
     }});
 
 
-    server.post("/users/:username", middleware! { |req, mut res| {
-        /*
-            update an user's infos depending of the content of the JSON body
-        */
-
+    /* Update user with JSON */
+    server.post("/users/:username", middleware! { |req, res| {
         /// Update the user's nick with given nick
         fn update_nick(conn: &PooledConnection<PostgresConnectionManager>, username: &String, nick: &Value) {
             let nick_str = nick.as_string().unwrap();
             let stmt = conn.prepare("UPDATE users
                                     SET nick = $1
                                     WHERE username = $2").unwrap();
-            let query = stmt.query(&[&nick_str, &username]);
+            let _rows = stmt.query(&[&nick_str, &username]).unwrap();
         }
 
         /// Update the user's email with given email
@@ -334,14 +323,14 @@ fn main() {
             let stmt = conn.prepare("UPDATE users
                                     SET email = $1
                                     WHERE username = $2").unwrap();
-            let query = stmt.query(&[&email_str, &username]);
+            let _rows = stmt.query(&[&email_str, &username]);
         }
 
         /// Delete the given user
         fn delete_user(conn: &PooledConnection<PostgresConnectionManager>, username: &String){
             let stmt = conn.prepare("DELETE FROM users
                                     WHERE username = $1").unwrap();
-            let query = stmt.query(&[&username]);
+            let _rows = stmt.query(&[&username]);
         }
 
 
@@ -389,7 +378,7 @@ fn main() {
 
         let mut status_code = Vec::new();
 
-        if(rows.len() == 0){
+        if rows.len() == 0 {
             &status_code.push(StatusCode{
                 code: 0
             });

@@ -27,10 +27,10 @@ pub fn get(req: &mut Request, res: &mut Response) -> String {
   };
 
   /*
-      tl_lat = top left latitude
-      tl_long = top left longitude
-      br_lat = bottom right latitude
-      br_long = bottom right longitude
+  tl_lat = top left latitude
+  tl_long = top left longitude
+  br_lat = bottom right latitude
+  br_long = bottom right longitude
   */
 
   // get the border coords
@@ -61,7 +61,7 @@ pub fn get(req: &mut Request, res: &mut Response) -> String {
       });
   }
 
-  println!("[*] Instruction exectued");
+  println!("[*] Instruction executed");
 
   serde_json::ser::to_string(&pictures).unwrap() // return the json value of pictures vec
 }

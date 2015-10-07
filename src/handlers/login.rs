@@ -7,15 +7,11 @@ struct UserCredentials {
     pub password: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct StatusCode {
-    // status code sent back by /login handler,
-    // 1 = login correct
-    // 0 = login incorrect
-    pub code: i32,
-}
+// TODO: use a proper status enum to represent the different failure modes
+// - missing email
+// - incorrect password
 
-pub fn post(req: &mut Request, res: &mut Response) -> String {
+pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
     res.set(AccessControlAllowOrigin::Any);
     res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
 
@@ -31,13 +27,8 @@ pub fn post(req: &mut Request, res: &mut Response) -> String {
 
     let rows = stmt.query(&[&credentials.email]).unwrap();
 
-    let mut status_code = Vec::new();
-
     if rows.len() == 0 {
-        &status_code.push(StatusCode{
-            code: 0
-        });
-
+        return Err(());
     } else {
         let row = rows.get(0); // getting the row
         let db_email: String = row.get("email");
@@ -56,19 +47,12 @@ pub fn post(req: &mut Request, res: &mut Response) -> String {
             let password_hash: String = utils::to_base64(&password_hash_bin);
 
             if db_password == password_hash {
-                // if password matches return a status code 1
-                &status_code.push(StatusCode{
-                    code: 1
-                });
+              return Ok(());
             }  else {
-                // return status code 0
-                &status_code.push(StatusCode{
-                    code: 0
-                });
+              return Err(());
             }
+        } else {
+          return Err(());
         }
     }
-
-    println!("{:?}", serde_json::ser::to_string(&status_code).unwrap());
-    serde_json::ser::to_string(&status_code).unwrap()
 }

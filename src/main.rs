@@ -50,7 +50,13 @@ fn main() {
     server.put("/pictures/:id", middleware! { |req, mut res| handlers::pictures::put(req, &mut res) });
     server.post("/users", middleware! { |req, mut res| handlers::users::post(req, &mut res) });
     server.put("/users/:username", middleware! { |req, mut res| handlers::users::put(req, &mut res) });
-    server.post("/login", middleware! { |req, mut res| handlers::login::post(req, &mut res) });
+    server.post("/login", middleware! { |req, mut res| {
+      // FIXME: create a proper success type.
+      match handlers::login::post(req, &mut res) {
+        Ok(_) => "1",
+        Err(_) => "0"
+      }
+    }});
 
     server.listen("0.0.0.0:6767"); // listen
 }

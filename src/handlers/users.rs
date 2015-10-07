@@ -63,6 +63,34 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
         let _rows = stmt.query(&[&email_str, &username]);
     }
 
+    /// Update the user's password with given password
+    // TODO: Make sure that the user sends his old password
+    fn update_password(conn: &PooledConnection<PostgresConnectionManager>, username: &String, password: &serde_json::Value) {
+        let new_password = password.as_string().unwrap();
+        let new_password = String::from(new_password);
+        // get the user's salt
+        let stmt = conn.prepare("SELECT salt
+                                FROM users
+                                WHERE username = $1").unwrap();
+        let rows = stmt.query(&[&username]).unwrap();
+
+        if rows.len() > 0 {
+            let row = rows.get(0);
+            let salt: Vec<u8> = row.get("salt");
+
+            // hash
+            let cost = 10;
+            let mut password_hash_bin: Vec<u8> = vec![0; 24];
+            bcrypt(cost, &salt, &new_password.into_bytes(), &mut password_hash_bin);
+            let password_hash = utils::to_base64(&password_hash_bin);
+
+            let stmt = conn.prepare("UPDATE users
+                                    SET password = $1
+                                    WHERE username = $2").unwrap();
+            let _rows = stmt.query(&[&password_hash, &username]).unwrap();
+        }
+    }
+
     /// Delete the given user
     fn delete_user(conn: &PooledConnection<PostgresConnectionManager>, username: &String){
         let stmt = conn.prepare("DELETE FROM users
@@ -86,6 +114,7 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
         match &**key { // check what we want to update
             "nick" => update_nick(&conn, &username, value),
             "email" => update_email(&conn, &username, value),
+            "password" => update_password(&conn, &username, value),
             "delete" => delete_user(&conn, &username),
             _ => {}
         }

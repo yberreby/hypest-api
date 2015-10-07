@@ -15,7 +15,7 @@ pub fn create_user(req: &mut Request, res: &mut Response) -> String {
     let salt: [u8; 16] = rand::random();
     let salt: &[u8] = &salt;
 
-    let cost = 20000;
+    let cost = 10;
     let mut password_hash_bin: Vec<u8> = vec![0; 24];
 
     bcrypt(cost, salt, &user_data.password.into_bytes(), &mut password_hash_bin);

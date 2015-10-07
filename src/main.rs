@@ -26,6 +26,7 @@ use nickel_postgres::{PostgresMiddleware};
 
 use r2d2::NopErrorHandler;
 
+pub use nickel::MediaType;
 
 
 pub mod db;
@@ -50,9 +51,10 @@ fn main() {
     server.post("/users/:username", middleware! { |req, mut res| handlers::users::update_user(req, &mut res) });
     server.post("/login", middleware! { |req, mut res| {
       // FIXME: create a proper success type.
+      res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
       match handlers::login::post(req, &mut res) {
-        Ok(_) => "1",
-        Err(_) => "0"
+        Ok(_) => "{\"code\":\"1\"}",
+        Err(_) => "{\"code\":\"0\"}"
       }
     }});
 

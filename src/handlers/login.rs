@@ -13,7 +13,6 @@ struct UserCredentials {
 
 pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
     res.set(AccessControlAllowOrigin::Any);
-    res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
 
     let conn = req.db_conn();
 
@@ -39,7 +38,7 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
             let db_salt: Vec<u8> = row.get("salt");
 
             // hash the password with db's salt
-            let cost = 20000;
+            let cost = 10;
             let mut password_hash_bin: Vec<u8> = vec![0; 24];
 
             bcrypt(cost, &db_salt, &credentials.password.into_bytes(), &mut password_hash_bin);

@@ -61,12 +61,12 @@ struct PictureMetadata {
     pub gps_long: f64,
 }
 
-#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
+#[derive(Serialize, Deserialize, Debug)]
 struct ReturnId {
     pub id: i32,
 }
 
-#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
+#[derive(Serialize, Deserialize, Debug)]
 struct User {
     // personal data
     pub username: String,
@@ -77,13 +77,13 @@ struct User {
     pub hypes: i32,
 }
 
-#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
-struct LoginUser {
+#[derive(Serialize, Deserialize, Debug)]
+struct UserCredentials {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, RustcDecodable, RustcEncodable)]
+#[derive(Serialize, Deserialize, Debug)]
 struct StatusCode {
     // status code sent back by /login handler,
     // 1 = login correct
@@ -202,14 +202,11 @@ fn main() {
                                 (author, description, gps_lat, gps_long, date_taken, rating, uploaded)
                                 VALUES($1, $2, $3, $4, NOW(), $5, FALSE)
                                 RETURNING id").unwrap();
-        let query = stmt.query(&[&pic_metadata.author,
+        let rows = stmt.query(&[&pic_metadata.author,
                                 &pic_metadata.description,
                                 &pic_metadata.gps_lat,
                                 &pic_metadata.gps_long,
-                                &pic_metadata.rating]);
-        let rows = query.iter()
-                        .next()
-                        .unwrap();
+                                &pic_metadata.rating]).unwrap();
 
         let first_and_only_row = rows.get(0); // getting the first and only one row
         let pic_id = ReturnId { // creating an ID struct to convert in JSON
@@ -250,31 +247,21 @@ fn main() {
     }});
 
 
-
+    /* Add a new user to the DB */
     server.post("/users", middleware! { |req, mut res| {
-        /*
-            creates a new user in database
-        */
-
         res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
 
         let conn = req.db_conn();
-        let user_infos = req.json_as::<User>().unwrap();
+        let user_data: User = serde_json::de::from_reader(&mut req.origin).unwrap();
 
         // hash the password
         let salt: [u8; 16] = rand::random();
         let cost = 20000;
         let mut password_hash_bin: Vec<u8> = vec![0; 24];
 
-        bcrypt(cost, &salt, &user_infos.password.into_bytes(), &mut password_hash_bin);
+        bcrypt(cost, &salt, &user_data.password.into_bytes(), &mut password_hash_bin);
 
         let password_hash = to_base64(&password_hash_bin);
-
-        /*
-        let mut buf = Cursor::new(&salt[..]);
-        let salt_big_endian = buf.read_u32::<BigEndian>().unwrap();
-        */
-
 
         let stmt = conn.prepare("INSERT INTO users
                                 (username, nick, email, password, date_created, nb_pictures, hypes, salt)
@@ -283,18 +270,13 @@ fn main() {
 
         let salt: &[u8] = &salt;
 
-        let query = stmt.query(&[&user_infos.username,
-                    &user_infos.username,
-                    &user_infos.email,
+        let rows = stmt.query(&[&user_data.username,
+                    &user_data.username,
+                    &user_data.email,
                     &password_hash,
-                    &user_infos.nb_pictures,
-                    &user_infos.hypes,
-                    &salt]);
-
-
-        let rows = query.iter()
-                        .next()
-                        .unwrap();
+                    &user_data.nb_pictures, // XXX: why is this not initialized to 0?
+                    &user_data.hypes,       // same goes for this
+                    &salt]).unwrap();
 
         let first_and_only_row = rows.get(0); // getting the first and only one row
         let user_id = ReturnId { // creating an ID struct to convert in JSON
@@ -362,7 +344,7 @@ fn main() {
 
         let conn = req.db_conn();
 
-        let user_infos = req.json_as::<LoginUser>().unwrap();
+        let credentials: UserCredentials = serde_json::de::from_reader(&mut req.origin).unwrap();
 
         // test if email exists
         let stmt = conn.prepare("SELECT email, password, salt
@@ -370,11 +352,7 @@ fn main() {
                                 WHERE email = $1
                                 LIMIT 1").unwrap();
 
-        let query =  stmt.query(&[&user_infos.email]);
-
-        let rows = query.iter()
-                        .next()
-                        .unwrap();
+        let rows = stmt.query(&[&credentials.email]).unwrap();
 
         let mut status_code = Vec::new();
 
@@ -387,7 +365,7 @@ fn main() {
             let row = rows.get(0); // getting the row
             let db_email: String = row.get("email");
 
-            if db_email == user_infos.email {
+            if db_email == credentials.email {
                 // now test if password's hash is the same as db's hash
                 let db_password: String = row.get("password");
                 let db_salt: Vec<u8> = row.get("salt");
@@ -396,7 +374,7 @@ fn main() {
                 let cost = 20000;
                 let mut password_hash_bin: Vec<u8> = vec![0; 24];
 
-                bcrypt(cost, &db_salt, &user_infos.password.into_bytes(), &mut password_hash_bin);
+                bcrypt(cost, &db_salt, &credentials.password.into_bytes(), &mut password_hash_bin);
 
                 let password_hash: String = to_base64(&password_hash_bin);
 

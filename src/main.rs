@@ -46,8 +46,8 @@ fn main() {
     server.get("/pictures_in_area", middleware! { |req, mut res| handlers::pictures_in_area::get(req, &mut res) } );
     server.post("/pictures", middleware! { |req, mut res| handlers::pictures::post(req, &mut res) });
     server.put("/pictures/:id", middleware! { |req, mut res| handlers::pictures::put(req, &mut res) });
-    server.post("/users", middleware! { |req, mut res| handlers::users::post(req, &mut res) });
-    server.put("/users/:username", middleware! { |req, mut res| handlers::users::put(req, &mut res) });
+    server.post("/users", middleware! { |req, mut res| handlers::users::create_user(req, &mut res) });
+    server.post("/users/:username", middleware! { |req, mut res| handlers::users::update_user(req, &mut res) });
     server.post("/login", middleware! { |req, mut res| {
       // FIXME: create a proper success type.
       match handlers::login::post(req, &mut res) {

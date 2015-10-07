@@ -50,8 +50,8 @@ fn main() {
     server.post("/users", middleware! { |req, mut res| handlers::users::create_user(req, &mut res) });
     server.post("/users/:username", middleware! { |req, mut res| handlers::users::update_user(req, &mut res) });
     server.post("/login", middleware! { |req, mut res| {
-      // FIXME: create a proper success type.
       res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
+      
       match handlers::login::post(req, &mut res) {
         Ok(_) => "{\"code\":\"1\"}",
         Err(_) => "{\"code\":\"0\"}"

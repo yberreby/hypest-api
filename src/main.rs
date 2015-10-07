@@ -7,7 +7,6 @@ extern crate hyper;
 extern crate postgres; // postgres database management
 extern crate chrono; // SQL DATE type management
 extern crate nickel_postgres; // postgres middleware
-extern crate plugin;
 extern crate rustc_serialize; // JSON
 extern crate serde; // JSON
 extern crate serde_json; // JSON
@@ -21,7 +20,6 @@ use nickel::{
   Nickel, HttpRouter, StaticFilesHandler
 };
 
-use plugin::{Pluggable};
 use postgres::SslMode;
 
 use nickel_postgres::{PostgresMiddleware};

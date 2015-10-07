@@ -18,7 +18,7 @@ r2d2_postgres = "0.9.3"
 rust-crypto = "0.2.31"
 rand = "0.3.11"
 byteorder = "0.3.13"
-octavo = { git = "https://github.com/libOctavo/octavo.git" }
+octavo = "0.1.0"
 
 [dependencies.nickel_postgres]
 git = "https://github.com/filsmick/nickel-postgres.git"

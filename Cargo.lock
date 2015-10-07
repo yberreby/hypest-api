@@ -7,7 +7,7 @@ dependencies = [
  "hyper 0.6.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "nickel 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nickel_postgres 0.0.0 (git+https://github.com/filsmick/nickel-postgres.git?branch=hypest-tmp-fix)",
- "octavo 0.1.0 (git+https://github.com/libOctavo/octavo.git)",
+ "octavo 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "plugin 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "postgres 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -273,7 +273,7 @@ dependencies = [
 [[package]]
 name = "octavo"
 version = "0.1.0"
-source = "git+https://github.com/libOctavo/octavo.git#1ccdd16f82ade25d5806a31b68dd4bd877f92774"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 1.4.5 (registry+https://github.com/rust-lang/crates.io-index)",

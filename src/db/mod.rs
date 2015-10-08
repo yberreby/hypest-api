@@ -26,11 +26,7 @@ pub struct ReturnId {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
-    // personal data
     pub username: String,
     pub email: String,
     pub password: String,
-    // public data
-    pub nb_pictures: i32,
-    pub hypes: i32,
 }

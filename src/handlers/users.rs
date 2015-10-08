@@ -24,15 +24,13 @@ pub fn create_user(req: &mut Request, res: &mut Response) -> String {
 
     let stmt = conn.prepare("INSERT INTO users
                             (username, nick, email, password, date_created, nb_pictures, hypes, salt)
-                            VALUES($1, $2, $3, $4, NOW(), $5, $6, $7)
+                            VALUES($1, $2, $3, $4, NOW(), 0, 0, $5)
                             RETURNING id").unwrap();
 
     let rows = stmt.query(&[&user_data.username,
                 &user_data.username,
                 &user_data.email,
                 &password_hash,
-                &user_data.nb_pictures, // XXX: why is this not initialized to 0?
-                &user_data.hypes,       // same goes for this
                 &salt]).unwrap();
 
     let first_and_only_row = rows.get(0); // getting the first and only one row

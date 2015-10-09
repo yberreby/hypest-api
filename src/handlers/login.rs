@@ -1,5 +1,6 @@
 use super::prelude::*;
 use super::utils;
+use rand;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct UserCredentials {
@@ -19,7 +20,7 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
     let credentials: UserCredentials = serde_json::de::from_reader(&mut req.origin).unwrap();
 
     // test if email exists
-    let stmt = conn.prepare("SELECT email, password, salt
+    let stmt = conn.prepare("SELECT username, email, password, salt
                             FROM users
                             WHERE email = $1
                             LIMIT 1").unwrap();
@@ -46,12 +47,38 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
             let password_hash: String = utils::to_base64(&password_hash_bin);
 
             if db_password == password_hash {
-              return Ok(());
+                // session creation processus
+                let username: String = row.get("username");
+
+                // salt generation
+                let salt: [u8; 16] = rand::random();
+                let salt: &[u8] = &salt;
+
+                // generate the token
+                let token: [u8; 32] = rand::random();
+                let token: &[u8] = &token;
+
+                let cost = 3;
+                let mut token_hash_bin: Vec<u8> = vec![0; 24];
+
+                bcrypt(cost, salt, &token, &mut token_hash_bin); // hash it in database only
+                let token_hash_hex = token_hash_bin.to_hex(); // serialize to hex
+
+                // create session row in database
+                let stmt = conn.prepare("INSERT INTO sessions
+                                        (username, token_hash, salt, date_created, expiration)
+                                        VALUES($1, $2, $3, NOW(), DATEADD(day, 3, NOW()))").unwrap();
+                let _query = stmt.query(&[&username,
+                                        &token_hash_hex,
+                                        &salt]).unwrap();
+
+
+                return Ok(());
             }  else {
-              return Err(());
+                return Err(());
             }
         } else {
-          return Err(());
+            return Err(());
         }
     }
 }

@@ -67,7 +67,7 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
                 // create session row in database
                 let stmt = conn.prepare("INSERT INTO sessions
                                         (username, token_hash, salt, date_created, expiration)
-                                        VALUES($1, $2, $3, NOW(), DATEADD(day, 3, NOW()))").unwrap();
+                                        VALUES($1, $2, $3, NOW(), NOW() + 3 * INTERVAL '1 day')").unwrap();
                 let _query = stmt.query(&[&username,
                                         &token_hash_hex,
                                         &salt]).unwrap();

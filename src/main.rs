@@ -23,7 +23,6 @@ use nickel::{
 use postgres::SslMode;
 use nickel_postgres::{PostgresMiddleware};
 use r2d2::NopErrorHandler;
-use hyper::header::Cookie;
 
 pub use nickel::MediaType;
 
@@ -42,21 +41,7 @@ fn main() {
     let mut server = Nickel::new();
     server.utilize(StaticFilesHandler::new("assets"));
     server.utilize(dbpool);
-    server.utilize(middleware! { |req|
-        /*
-            check auth cookie: if it's not
-            valid, redirect to /login
-        */
-
-        if req.origin.headers.has::<Cookie>() {
-            let cookie_header = req.origin.headers.get::<Cookie>().unwrap();
-            let cookie = &cookie_header.0;
-            println!("{:?}", cookie);
-            // TODO: test each cookie,
-            // then test if it's a SESSID in syntax token|username,
-            // then test if the given token matches the given username's token
-        }
-    });
+    server.utilize(middleware! { |req| handlers::sessions::check_cookies(req) } );
 
     server.get("/pictures_in_area", middleware! { |req, mut res| handlers::pictures_in_area::get(req, &mut res) } );
     server.post("/pictures", middleware! { |req, mut res| handlers::pictures::post(req, &mut res) });

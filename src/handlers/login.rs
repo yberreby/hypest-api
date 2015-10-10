@@ -11,8 +11,10 @@ struct UserCredentials {
 // TODO: use a proper status enum to represent the different failure modes
 // - missing email
 // - incorrect password
-/// login function with email and password
 pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
+    /*
+        login with email and password
+    */
     res.set(AccessControlAllowOrigin::Any);
 
     let conn = req.db_conn();
@@ -67,7 +69,7 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
                 // create session row in database
                 let stmt = conn.prepare("INSERT INTO sessions
                                         (username, token_hash, salt, date_created)
-                                        VALUES($1, $2, $3, NOW()").unwrap();
+                                        VALUES($1, $2, $3, NOW())").unwrap();
                 let _query = stmt.query(&[&username,
                                         &token_hash_hex,
                                         &salt]).unwrap();

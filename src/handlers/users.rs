@@ -4,7 +4,7 @@ use rand;
 use r2d2::PooledConnection;
 use r2d2_postgres::PostgresConnectionManager;
 
-// TODO: make sure the email doesn't already exist
+// TODO: make sure the email & username doesn't already exist
 pub fn create_user(req: &mut Request, res: &mut Response) -> String {
     res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
 

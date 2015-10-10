@@ -51,11 +51,11 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
                 let username: String = row.get("username");
 
                 // salt generation
-                let salt: [u8; 16] = rand::random();
+                let salt: [u8; 16] = rand::random(); // TODO FIXME XXX An application that requires an entropy source for cryptographic purposes must usr OsRng
                 let salt: &[u8] = &salt;
 
                 // generate the token
-                let token: [u8; 32] = rand::random();
+                let token: [u8; 32] = rand::random(); // TODO FIXME XXX An application that requires an entropy source for cryptographic purposes must usr OsRng
                 let token: &[u8] = &token;
 
                 let cost = 3;

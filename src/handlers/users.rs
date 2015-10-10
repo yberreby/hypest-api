@@ -12,7 +12,7 @@ pub fn create_user(req: &mut Request, res: &mut Response) -> String {
     let user_data: db::User = serde_json::de::from_reader(&mut req.origin).unwrap();
 
     // hash the password
-    let salt: [u8; 16] = rand::random();
+    let salt: [u8; 16] = rand::random(); // TODO FIXME XXX An application that requires an entropy source for cryptographic purposes must usr OsRng
     let salt: &[u8] = &salt;
 
     let cost = 10;

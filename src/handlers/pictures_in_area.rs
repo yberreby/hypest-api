@@ -12,7 +12,7 @@ pub fn get(req: &mut Request, res: &mut Response) -> String {
 
   // HTTP headers
   res.set(MediaType::Json); // Content-Type: application/json
-  res.set(AccessControlAllowOrigin::Any); // Disable CORS for AJAX requests
+  res.set(AccessControlAllowOrigin::Any);
 
   let conn = req.db_conn();
   let query = req.query();
@@ -60,8 +60,6 @@ pub fn get(req: &mut Request, res: &mut Response) -> String {
           likes: row.get("likes"),
       });
   }
-
-  println!("[*] Instruction executed");
 
   serde_json::ser::to_string(&pictures).unwrap() // return the json value of pictures vec
 }

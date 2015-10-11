@@ -34,14 +34,21 @@ pub fn create_user(req: &mut Request, res: &mut Response) -> String {
                 &user_data.username,
                 &user_data.email,
                 &password_hash,
-                &salt]).unwrap();
+                &salt]);
 
-    let first_and_only_row = rows.get(0); // getting the first and only one row
-    let user_id = db::ReturnId { // creating an ID struct to convert in JSON
-        id: first_and_only_row.get("id"),
-    };
+    // test if username has already been taken
+    match rows {
+        Ok(rows) => {
+            let first_and_only_row = rows.get(0); // getting the first and only one row
+            let user_id = db::ReturnId { // creating an ID struct to convert in JSON
+                id: first_and_only_row.get("id"),
+            };
 
-    serde_json::ser::to_string(&user_id).unwrap() // returning the id in json
+            serde_json::ser::to_string(&user_id).unwrap() // returning the id in json
+        },
+
+        Err(_) => String::from("{\"code\":\"userame already taken\"}")
+    }
 
 }
 

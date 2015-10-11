@@ -2,11 +2,27 @@ use super::prelude::*;
 use super::utils;
 use rand;
 
+use std::cell::RefCell;
+use rand::os::OsRng;
+use rand::{Rand, Rng};
+
+use octavo::digest::sha2::SHA256;
+use octavo::digest::Digest;
+
 #[derive(Serialize, Deserialize, Debug)]
 struct UserCredentials {
     pub email: String,
     pub password: String,
 }
+
+thread_local!(static OS_RNG: RefCell<OsRng> = RefCell::new(OsRng::new().unwrap()));
+
+fn os_random<T: Rand>() -> T {
+    OS_RNG.with(|r| {
+        r.borrow_mut().gen()
+    })
+}
+
 
 // TODO: use a proper status enum to represent the different failure modes
 // - missing email
@@ -52,27 +68,23 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
                 // session creation processus
                 let username: String = row.get("username");
 
-                // salt generation
-                let salt: [u8; 16] = rand::random(); // TODO FIXME XXX An application that requires an entropy source for cryptographic purposes must usr OsRng
-                let salt: &[u8] = &salt;
-
                 // generate the token
-                let token: [u8; 32] = rand::random(); // TODO FIXME XXX An application that requires an entropy source for cryptographic purposes must usr OsRng
+                let token: [u8; 32] = os_random();
                 let token: &[u8] = &token;
 
-                let cost = 3;
-                let mut token_hash_bin: Vec<u8> = vec![0; 24];
+                let mut token_hash_bin: Vec<u8> = vec![0; 32];
 
-                bcrypt(cost, salt, &token, &mut token_hash_bin); // hash it in database only
+                let mut sha2 = SHA256::default();
+                sha2.update(token);
+                sha2.result(&mut token_hash_bin);
+
                 let token_hash_hex = token_hash_bin.to_hex(); // serialize to hex
 
                 // create session row in database
                 let stmt = conn.prepare("INSERT INTO sessions
-                                        (username, token_hash, salt, date_created)
-                                        VALUES($1, $2, $3, NOW())").unwrap();
-                let _query = stmt.query(&[&username,
-                                        &token_hash_hex,
-                                        &salt]).unwrap();
+                                        (username, token_hash, date_created)
+                                        VALUES($1, $2, NOW())").unwrap();
+                let _query = stmt.query(&[&username, &token_hash_hex]).unwrap();
 
                 return Ok(());
             }  else {

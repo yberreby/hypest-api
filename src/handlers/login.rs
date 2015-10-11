@@ -1,6 +1,5 @@
 use super::prelude::*;
 use super::utils;
-use rand;
 
 use std::cell::RefCell;
 use rand::os::OsRng;
@@ -75,10 +74,13 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
                 let mut token_hash_bin: Vec<u8> = vec![0; 32];
 
                 let mut sha2 = SHA256::default();
-                sha2.update(token);
+                sha2.update(token.to_hex()); // hash the hex of the token
                 sha2.result(&mut token_hash_bin);
 
-                let token_hash_hex = token_hash_bin.to_hex(); // serialize to hex
+                let token_hash_hex = token_hash_bin.to_hex(); // serialize the token hash to hex
+
+                // RETURN THIS TOKEN IN SET-COOKIE
+                let token_hex = token.to_hex(); // serialize the token to hex
 
                 // create session row in database
                 let stmt = conn.prepare("INSERT INTO sessions

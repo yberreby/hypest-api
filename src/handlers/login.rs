@@ -74,12 +74,13 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
                 let mut token_hash_bin: Vec<u8> = vec![0; 32];
 
                 let mut sha2 = SHA256::default();
-                sha2.update(token.to_hex()); // hash the hex of the token
+                sha2.update(token); // hash the token
                 sha2.result(&mut token_hash_bin);
 
+                // STORE THIS HASHED TOKEN HEX TO DATABASE
                 let token_hash_hex = token_hash_bin.to_hex(); // serialize the token hash to hex
 
-                // RETURN THIS TOKEN IN SET-COOKIE
+                // RETURN THIS UNHASHED TOKEN HEX IN SET-COOKIE
                 let token_hex = token.to_hex(); // serialize the token to hex
 
                 // create session row in database

@@ -34,7 +34,7 @@ pub fn check_cookies(req: &mut Request) {
             // compare with db's token
             let stmt = conn.prepare("SELECT EXISTS
                                     (SELECT 1 FROM sessions WHERE token_hash = $1 LIMIT 1)
-                                    AS exists").unwrap()
+                                    AS exists").unwrap();
             let rows = stmt.query(&[&token_hash_hex]).unwrap();
 
             let row = rows.get(0); // getting the first and only one row

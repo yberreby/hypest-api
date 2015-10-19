@@ -4,15 +4,18 @@ use rand;
 use r2d2::PooledConnection;
 use r2d2_postgres::PostgresConnectionManager;
 
-// TODO: make sure the email doesn't already exist
+// TODO: make sure the email & username doesn't already exist
 pub fn create_user(req: &mut Request, res: &mut Response) -> String {
+    /*
+        user creation handler
+    */
     res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
 
     let conn = req.db_conn();
     let user_data: db::User = serde_json::de::from_reader(&mut req.origin).unwrap();
 
     // hash the password
-    let salt: [u8; 16] = rand::random();
+    let salt: [u8; 16] = rand::random(); // TODO FIXME XXX An application that requires an entropy source for cryptographic purposes must usr OsRng
     let salt: &[u8] = &salt;
 
     let cost = 10;
@@ -31,20 +34,33 @@ pub fn create_user(req: &mut Request, res: &mut Response) -> String {
                 &user_data.username,
                 &user_data.email,
                 &password_hash,
-                &salt]).unwrap();
+                &salt]);
 
-    let first_and_only_row = rows.get(0); // getting the first and only one row
-    let user_id = db::ReturnId { // creating an ID struct to convert in JSON
-        id: first_and_only_row.get("id"),
-    };
+    // test if username has already been taken
+    match rows {
+        Ok(rows) => {
+            let first_and_only_row = rows.get(0); // getting the first and only one row
+            let user_id = db::ReturnId { // creating an ID struct to convert in JSON
+                id: first_and_only_row.get("id"),
+            };
 
-    serde_json::ser::to_string(&user_id).unwrap() // returning the id in json
+            serde_json::ser::to_string(&user_id).unwrap() // returning the id in json
+        },
+
+        Err(_) => String::from("{\"code\":\"userame already taken\"}")
+    }
 
 }
 
 pub fn update_user(req: &mut Request, _res: &mut Response) {
-    /// Update the user's nick with given nick
+    /*
+        update user handler to update given field
+    */
     fn update_nick(conn: &PooledConnection<PostgresConnectionManager>, username: &String, nick: &serde_json::Value) {
+        /*
+            update user's nick with given nick
+            TODO: Make sure that the user sends his password
+        */
         let nick_str = nick.as_string().unwrap();
         let stmt = conn.prepare("UPDATE users
                                 SET nick = $1
@@ -52,8 +68,11 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
         let _rows = stmt.query(&[&nick_str, &username]).unwrap();
     }
 
-    /// Update the user's email with given email
     fn update_email(conn: &PooledConnection<PostgresConnectionManager>, username: &String, email: &serde_json::Value) {
+        /*
+            update user's email with given email
+            TODO: Make sure that the user sends his password
+        */
         let email_str = email.as_string().unwrap();
         let stmt = conn.prepare("UPDATE users
                                 SET email = $1
@@ -61,9 +80,11 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
         let _rows = stmt.query(&[&email_str, &username]);
     }
 
-    /// Update the user's password with given password
-    // TODO: Make sure that the user sends his old password
     fn update_password(conn: &PooledConnection<PostgresConnectionManager>, username: &String, password: &serde_json::Value) {
+        /*
+            update the user's password with given password
+            TODO: Make sure that the user sends his old password
+        */
         let new_password = password.as_string().unwrap();
         let new_password = String::from(new_password);
         // get the user's salt
@@ -89,8 +110,11 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
         }
     }
 
-    /// Delete the given user
     fn delete_user(conn: &PooledConnection<PostgresConnectionManager>, username: &String){
+        /*
+            delete the given user
+            TODO: Make sure that the user sends his password
+        */
         let stmt = conn.prepare("DELETE FROM users
                                 WHERE username = $1").unwrap();
         let _rows = stmt.query(&[&username]);

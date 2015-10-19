@@ -15,15 +15,13 @@ extern crate r2d2_postgres;
 extern crate octavo;
 extern crate rand; // for password entropy
 extern crate byteorder;
+extern crate cookie;
 
 use nickel::{
   Nickel, HttpRouter, StaticFilesHandler
 };
-
 use postgres::SslMode;
-
 use nickel_postgres::{PostgresMiddleware};
-
 use r2d2::NopErrorHandler;
 
 pub use nickel::MediaType;
@@ -43,6 +41,7 @@ fn main() {
     let mut server = Nickel::new();
     server.utilize(StaticFilesHandler::new("assets"));
     server.utilize(dbpool);
+    server.utilize(middleware! { |req| handlers::sessions::check_cookies(req) } );
 
     server.get("/pictures_in_area", middleware! { |req, mut res| handlers::pictures_in_area::get(req, &mut res) } );
     server.post("/pictures", middleware! { |req, mut res| handlers::pictures::post(req, &mut res) });
@@ -50,13 +49,13 @@ fn main() {
     server.post("/users", middleware! { |req, mut res| handlers::users::create_user(req, &mut res) });
     server.post("/users/:username", middleware! { |req, mut res| handlers::users::update_user(req, &mut res) });
     server.post("/login", middleware! { |req, mut res| {
-      res.set(MediaType::Json); // HTTP header : Content-Type: application/json (for return)
-      
+      res.set(MediaType::Json); // HTTP header : Content-Type: application/json
+
       match handlers::login::post(req, &mut res) {
         Ok(_) => "{\"code\":\"1\"}",
         Err(_) => "{\"code\":\"0\"}"
       }
     }});
 
-    server.listen("0.0.0.0:6767"); // listen
+    server.listen("127.0.0.1:6767"); // listen
 }

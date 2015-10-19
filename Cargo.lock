@@ -4,6 +4,7 @@ version = "0.0.1"
 dependencies = [
  "byteorder 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.2.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cookie 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.6.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "nickel 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nickel_postgres 0.0.0 (git+https://github.com/filsmick/nickel-postgres.git?branch=hypest-tmp-fix)",
@@ -82,6 +83,17 @@ dependencies = [
 [[package]]
 name = "cookie"
 version = "0.1.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "openssl 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "url 0.2.37 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "cookie"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "openssl 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)",

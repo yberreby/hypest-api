@@ -17,6 +17,7 @@ r2d2_postgres = "0.9.3"
 rand = "0.3.11"
 byteorder = "0.3.13"
 octavo = "0.1.0"
+cookie = "0.2.0"
 
 [dependencies.nickel_postgres]
 git = "https://github.com/filsmick/nickel-postgres.git"

@@ -8,3 +8,5 @@ pub use db;
 pub use octavo::crypto::block::blowfish::bcrypt;
 pub use std::fs::File;
 pub use std::io::prelude::*;
+pub use rustc_serialize::hex::ToHex;
+pub use hyper::header::Cookie;

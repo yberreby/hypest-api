@@ -52,8 +52,9 @@ fn main() {
       res.set(MediaType::Json); // HTTP header : Content-Type: application/json
 
       match handlers::login::post(req, &mut res) {
-        Ok(_) => "{\"code\":\"1\"}",
-        Err(_) => "{\"code\":\"0\"}"
+        handlers::login::LoginStatus::LoginOk => "{\"code\":\"LoginOk\"}",
+        handlers::login::LoginStatus::EmailIncorrect => "{\"code\":\"EmailIncorrect\"}",
+        handlers::login::LoginStatus::PasswordIncorrect => "{\"code\":\"PasswordIncorrect\"}",
       }
     }});
 

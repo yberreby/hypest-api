@@ -6,7 +6,7 @@ pub struct PictureDBData {
     pub gps_lat: f64,
     pub gps_long: f64,
     pub date_taken: String,
-    pub rating: Option<f32>, // reting is set to -1 when there's no rating.
+    pub rating: Option<f32>, // rating is set to -1 when there's no rating.
     pub likes: i32, // likes as 0 value default
 }
 

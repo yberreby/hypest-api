@@ -14,6 +14,13 @@ struct UserCredentials {
     pub password: String,
 }
 
+pub enum LoginStatus {
+    LoginOk,
+    EmailIncorrect,
+    PasswordIncorrect,
+}
+
+
 thread_local!(static OS_RNG: RefCell<OsRng> = RefCell::new(OsRng::new().unwrap()));
 
 fn os_random<T: Rand>() -> T {
@@ -26,7 +33,7 @@ fn os_random<T: Rand>() -> T {
 // TODO: use a proper status enum to represent the different failure modes
 // - missing email
 // - incorrect password
-pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
+pub fn post(req: &mut Request, res: &mut Response) -> LoginStatus {
     /*
         login with email and password
     */
@@ -45,7 +52,7 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
     let rows = stmt.query(&[&credentials.email]).unwrap();
 
     if rows.len() == 0 {
-        return Err(());
+        return LoginStatus::EmailIncorrect; // email doesn't exists
     } else {
         let row = rows.get(0); // getting the row
         let db_email: String = row.get("email");
@@ -89,12 +96,12 @@ pub fn post(req: &mut Request, res: &mut Response) -> Result<(), ()> {
                                         VALUES($1, $2, NOW())").unwrap();
                 let _query = stmt.query(&[&username, &token_hash_hex]).unwrap();
 
-                return Ok(());
+                return LoginStatus::LoginOk;
             }  else {
-                return Err(());
+                return LoginStatus::PasswordIncorrect;
             }
         } else {
-            return Err(());
+            return LoginStatus::EmailIncorrect;
         }
     }
 }

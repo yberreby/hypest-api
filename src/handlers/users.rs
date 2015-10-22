@@ -59,7 +59,6 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
     fn update_nick(conn: &PooledConnection<PostgresConnectionManager>, username: &String, nick: &serde_json::Value) {
         /*
             update user's nick with given nick
-            TODO: Make sure that the user sends his password
         */
         let nick_str = nick.as_string().unwrap();
         let stmt = conn.prepare("UPDATE users
@@ -71,7 +70,6 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
     fn update_email(conn: &PooledConnection<PostgresConnectionManager>, username: &String, email: &serde_json::Value) {
         /*
             update user's email with given email
-            TODO: Make sure that the user sends his password
         */
         let email_str = email.as_string().unwrap();
         let stmt = conn.prepare("UPDATE users
@@ -83,7 +81,7 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
     fn update_password(conn: &PooledConnection<PostgresConnectionManager>, username: &String, password: &serde_json::Value) {
         /*
             update the user's password with given password
-            TODO: Make sure that the user sends his old password
+            TODO: Make sure that the user sends his password
         */
         let new_password = password.as_string().unwrap();
         let new_password = String::from(new_password);
@@ -110,11 +108,14 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
         }
     }
 
-    fn delete_user(conn: &PooledConnection<PostgresConnectionManager>, username: &String){
+    fn delete_user(conn: &PooledConnection<PostgresConnectionManager>, username: &String, password: &serde_json::Value){
         /*
             delete the given user
             TODO: Make sure that the user sends his password
         */
+
+
+
         let stmt = conn.prepare("DELETE FROM users
                                 WHERE username = $1").unwrap();
         let _rows = stmt.query(&[&username]);
@@ -123,7 +124,7 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
 
     let conn = req.db_conn();
 
-    let username = req.param("username").unwrap().to_owned();
+    let username = req.param("username").unwrap().to_owned(); // get the username we want to modify
 
     let mut body = vec![];
     req.origin.read_to_end(&mut body).unwrap();
@@ -137,7 +138,7 @@ pub fn update_user(req: &mut Request, _res: &mut Response) {
             "nick" => update_nick(&conn, &username, value),
             "email" => update_email(&conn, &username, value),
             "password" => update_password(&conn, &username, value),
-            "delete" => delete_user(&conn, &username),
+            "delete" => delete_user(&conn, &username, value),
             _ => {}
         }
     }

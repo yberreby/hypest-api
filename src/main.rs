@@ -25,6 +25,8 @@ use nickel_postgres::{PostgresMiddleware};
 use r2d2::NopErrorHandler;
 
 pub use nickel::MediaType;
+use nickel::status::StatusCode;
+use nickel::Action;
 
 
 pub mod db;
@@ -41,7 +43,15 @@ fn main() {
     let mut server = Nickel::new();
     server.utilize(StaticFilesHandler::new("assets"));
     server.utilize(dbpool);
-    server.utilize(middleware! { |req| handlers::sessions::check_cookies(req) } );
+    server.utilize(middleware! { |req, mut res|
+        match handlers::sessions::check_session(req) {
+            handlers::sessions::SessionStatus::Valid => println!("sessid ok"),
+            handlers::sessions::SessionStatus::Invalid => {
+                res.set(StatusCode::Forbidden);
+                return res.send("");
+            }
+        }
+    });
 
     server.get("/pictures_in_area", middleware! { |req, mut res| handlers::pictures_in_area::get(req, &mut res) } );
     server.post("/pictures", middleware! { |req, mut res| handlers::pictures::post(req, &mut res) });

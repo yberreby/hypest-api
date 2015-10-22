@@ -89,6 +89,7 @@ pub fn post(req: &mut Request, res: &mut Response) -> LoginStatus {
 
                 // RETURN THIS UNHASHED TOKEN HEX IN SET-COOKIE
                 let token_hex = token.to_hex(); // serialize the token to hex
+                println!("{}", token_hex);
 
                 // create session row in database
                 let stmt = conn.prepare("INSERT INTO sessions

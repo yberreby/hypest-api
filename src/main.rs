@@ -18,7 +18,7 @@ extern crate byteorder;
 extern crate cookie;
 
 use nickel::{
-  Nickel, HttpRouter, StaticFilesHandler
+    Nickel, HttpRouter, StaticFilesHandler
 };
 use postgres::SslMode;
 use nickel_postgres::{PostgresMiddleware};
@@ -34,10 +34,10 @@ mod handlers;
 
 fn main() {
     let dbpool = PostgresMiddleware::new(
-      "postgresql://postgres:@127.0.0.1/hypest",
-      SslMode::None,
-      5,
-      Box::new(NopErrorHandler)
+        "postgresql://postgres:@127.0.0.1/hypest",
+        SslMode::None,
+        5,
+        Box::new(NopErrorHandler)
     ).unwrap();
 
     let mut server = Nickel::new();
@@ -69,14 +69,17 @@ fn main() {
         handlers::users::update_user(req, &mut res)
     }});
     server.post("/login", middleware! { |req, mut res| {
-      res.set(MediaType::Json); // HTTP header : Content-Type: application/json
+        res.set(MediaType::Json);
 
-      match handlers::login::post(req, &mut res) {
-        handlers::login::LoginStatus::LoginOk => "{\"code\":\"LoginOk\"}",
-        handlers::login::LoginStatus::EmailIncorrect => "{\"code\":\"EmailIncorrect\"}",
-        handlers::login::LoginStatus::PasswordIncorrect => "{\"code\":\"PasswordIncorrect\"}",
-      }
+        // XXX: this is incredibly error prone.
+        // An enum shared between client and server should be used.
+        // XXX: there is no newline after the JSON string.
+        match handlers::login::post(req, &mut res) {
+            handlers::login::LoginStatus::LoginOk => "{\"code\":\"LoginOk\"}",
+            handlers::login::LoginStatus::EmailIncorrect => "{\"code\":\"EmailIncorrect\"}",
+            handlers::login::LoginStatus::PasswordIncorrect => "{\"code\":\"PasswordIncorrect\"}",
+        }
     }});
 
-    server.listen("127.0.0.1:6767"); // listen
+    server.listen("127.0.0.1:6767");
 }

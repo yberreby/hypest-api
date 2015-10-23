@@ -45,8 +45,11 @@ fn main() {
     server.utilize(dbpool);
     server.utilize(middleware! { |req, mut res|
         match handlers::sessions::check_session(req) {
-            handlers::sessions::SessionStatus::Valid => println!("sessid ok"),
+            handlers::sessions::SessionStatus::Valid => {
+                println!("sessid ok");
+            },
             handlers::sessions::SessionStatus::Invalid => {
+                println!("invalid session");
                 res.set(StatusCode::Forbidden);
                 return res.send("");
             }
@@ -75,9 +78,15 @@ fn main() {
         // An enum shared between client and server should be used.
         // XXX: there is no newline after the JSON string.
         match handlers::login::post(req, &mut res) {
-            handlers::login::LoginStatus::LoginOk => "{\"code\":\"LoginOk\"}",
-            handlers::login::LoginStatus::EmailIncorrect => "{\"code\":\"EmailIncorrect\"}",
-            handlers::login::LoginStatus::PasswordIncorrect => "{\"code\":\"PasswordIncorrect\"}",
+            handlers::login::LoginStatus::LoginOk => {
+                "{\"code\":\"LoginOk\"}"
+            },
+            handlers::login::LoginStatus::EmailIncorrect => {
+                "{\"code\":\"EmailIncorrect\"}"
+            },
+            handlers::login::LoginStatus::PasswordIncorrect => {
+                "{\"code\":\"PasswordIncorrect\"}"
+            },
         }
     }});
 

@@ -21,7 +21,9 @@ pub enum LoginStatus {
 }
 
 
-thread_local!(static OS_RNG: RefCell<OsRng> = RefCell::new(OsRng::new().unwrap()));
+thread_local! {
+    static OS_RNG: RefCell<OsRng> = RefCell::new(OsRng::new().unwrap())
+}
 
 fn os_random<T: Rand>() -> T {
     OS_RNG.with(|r| {
@@ -41,7 +43,9 @@ pub fn post(req: &mut Request, res: &mut Response) -> LoginStatus {
 
     let conn = req.db_conn();
 
-    let credentials: UserCredentials = serde_json::de::from_reader(&mut req.origin).unwrap();
+    let credentials: UserCredentials = {
+        serde_json::de::from_reader(&mut req.origin).unwrap()
+    };
 
     // test if email exists
     let stmt = conn.prepare("SELECT username, email, password, salt
@@ -66,7 +70,10 @@ pub fn post(req: &mut Request, res: &mut Response) -> LoginStatus {
             let cost = 10;
             let mut password_hash_bin: Vec<u8> = vec![0; 24];
 
-            bcrypt(cost, &db_salt, &credentials.password.into_bytes(), &mut password_hash_bin);
+            bcrypt(cost,
+                   &db_salt,
+                   &credentials.password.into_bytes(),
+                   &mut password_hash_bin);
 
             let password_hash: String = utils::to_base64(&password_hash_bin);
 
@@ -85,17 +92,18 @@ pub fn post(req: &mut Request, res: &mut Response) -> LoginStatus {
                 sha2.result(&mut token_hash_bin);
 
                 // STORE THIS HASHED TOKEN HEX TO DATABASE
-                let token_hash_hex = token_hash_bin.to_hex(); // serialize the token hash to hex
-
+                // serialize the token hash to hex
+                let token_hash_hex = token_hash_bin.to_hex();
                 // RETURN THIS UNHASHED TOKEN HEX IN SET-COOKIE
-                let token_hex = token.to_hex(); // serialize the token to hex
+                // serialize the token to hex
+                let token_hex = token.to_hex();
                 println!("{}", token_hex);
 
                 // create session row in database
                 let stmt = conn.prepare("INSERT INTO sessions
                                         (username, token_hash, date_created)
                                         VALUES($1, $2, NOW())").unwrap();
-                let _query = stmt.query(&[&username, &token_hash_hex]).unwrap();
+                let _rows = stmt.query(&[&username, &token_hash_hex]).unwrap();
 
                 return LoginStatus::LoginOk;
             }  else {

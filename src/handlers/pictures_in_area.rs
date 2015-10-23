@@ -43,7 +43,7 @@ pub fn get(req: &mut Request, res: &mut Response) -> String {
                            WHERE gps_long BETWEEN SYMMETRIC $1 AND $2
                            AND gps_lat BETWEEN SYMMETRIC $3 AND $4
                            AND uploaded=TRUE
-                           ORDER BY {} DESC", order_by)).unwrap();  // prepare the query
+                           ORDER BY {} DESC", order_by)).unwrap();
 
   let mut pictures = Vec::new(); // create the PictureDBData vector
 
@@ -61,5 +61,5 @@ pub fn get(req: &mut Request, res: &mut Response) -> String {
       });
   }
 
-  serde_json::ser::to_string(&pictures).unwrap() // return the json value of pictures vec
+  serde_json::ser::to_string(&pictures).unwrap()
 }
